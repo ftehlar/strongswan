@@ -12,5 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-charon.plugins.kernel-vpp.host = "localhost:9111"
-	Host and port running VPP agent's gRPC server
+charon.plugins.kernel-vpp.channel = "grpc"
+    Channel used to configure VPP
+    Possible values: grpc, redis
+
+charon.plugins.kernel-vpp.grpc = "localhost:9111"
+    Host and port running VPP agent's gRPC server
+
+charon.plugins.kernel-vpp.redis = "localhost:6380"
+    Host and port running redis
+
+charon.plugins.kernel-vpp.vpp_label = "vpp1"
+    VPP label used in redis keys
+

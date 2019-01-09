@@ -21,6 +21,6 @@ libstrongswan_socket_vpp_la_SOURCES = \
     socket_vpp_socket.h socket_vpp_socket.c
 
 libstrongswan_socket_vpp_la_LIBADD = $(top_builddir)/src/libipsec/libipsec.la \
-    -lvpp-agent-api -lgrpc -lgpr -lgrpc-c -lprotobuf-c -lprotobuf
+    -lvpp-agent-api -lgrpc -lgpr -lgrpc-c -lprotobuf-c -lprotobuf -lhiredis
 
 libstrongswan_socket_vpp_la_LDFLAGS = -module -avoid-version

@@ -49,7 +49,12 @@ cd ../../
 mkdir build -p; cd build
 (../configure && make && sudo make install) 1>> $LOG
 
-echo "Generating app-agent API files"
+echo "Building hiredis"
+cd ${WS}/third_party/hiredis
+git submodule update --init 1>> $LOG
+make && sudo make install
+
+echo "Generating vpp-agent API files"
 cd ${WS}/third_party/vpp-agent
 git submodule update --init 1>> $LOG
 git checkout dev 1>> $LOG

@@ -20,6 +20,10 @@ AGENT_CFG_DIR="/tmp/vpp-agent"
 RESPONDER_CFG_DIR="/etc"
 INITIATOR_CFG_DIR="/tmp/initiator"
 
+if [ "$VPP_CHANNEL" = "" ] ; then
+    VPP_CHANNEL="grpc"
+fi
+
 vpp_conf() {
   sudo mkdir -p $VPP_CFG_DIR
   sudo bash -c "cat << EOF > $VPP_CFG_DIR/vpp.conf
@@ -61,9 +65,39 @@ network: tcp
 
 # Maximum message size in bytes for inbound mesages. If not set, GRPC uses the default 4MB.
 max-msg-size: 4096
+EOF"
 
-# Limit of server streams to each server transport.
-max-concurrent-streams: 0
+}
+
+redis_conf() {
+  sudo mkdir -p $AGENT_CFG_DIR
+  sudo bash -c "cat << EOF > $AGENT_CFG_DIR/redis.conf
+# NodeConfig
+db: 0
+dial-timeout: 0
+enable-query-on-slave: false
+endpoint: 172.17.0.1:6380
+password: ""
+pool:
+  busy-timeout: 0
+  idle-check-frequency: 0
+  idle-timeout: 0
+  max-connections: 0
+read-timeout: 0
+tls:
+  ca-file: ""
+  cert-file: ""
+  enabled: false
+  key-file: ""
+  skip-verify: false
+write-timeout: 0
+EOF"
+}
+
+vpp_plugin_conf() {
+
+  sudo bash -c "cat << EOF > $AGENT_CFG_DIR/vpp-plugin.conf
+status-publishers: [etcd, redis]
 EOF"
 }
 
@@ -113,6 +147,16 @@ charon {
 EOF"
   sudo bash -c "cat << EOF > $RESPONDER_CFG_DIR/ipsec.secrets
 : PSK 'Vpp123'
+EOF"
+}
+
+strongswan_conf() {
+
+    sudo bash -c "cat << EOF > $RESPONDER_CFG_DIR/strongswan.d/charon/kernel-vpp.conf
+kernel-vpp {
+    load = yes
+    channel = "$VPP_CHANNEL"
+}
 EOF"
 }
 
@@ -172,11 +216,25 @@ EOF"
 start() {
   responder_conf
   initiator_conf
-  grpc_conf
   vpp_conf
+  redis_conf
+  grpc_conf
+  vpp_plugin_conf
+  strongswan_conf
 
   echo "info: starting docker containers"
   (sudo docker run --name responder --hostname responder -d --net=host --privileged -it -e INITIAL_LOGLVL=debug -e ETCD_CONFIG=DISABLED -e KAFKA_CONFIG=DISABLED -v $VPP_CFG_DIR:/etc/vpp -v $AGENT_CFG_DIR:/opt/vpp-agent/dev ligato/vpp-agent:$VPP_AGENT_VERSION && sudo docker run --name initiator --hostname initiator -d --privileged -v $INITIATOR_CFG_DIR:/conf -v $INITIATOR_CFG_DIR:/etc/ipsec.d philplckthun/strongswan) 1> /dev/null
+
+  demo_config_options=
+  if [ "$VPP_CHANNEL" = "redis" ] ; then
+      echo "Running redis"
+      sudo docker run -p 6380:6379 --name redis -d redis
+
+      # importat: enable keyspace notifications in redis
+      sudo docker exec redis redis-cli config set notify-keyspace-events KA
+      demo_config_options="--use-redis"
+  fi
+
   if [ $? -ne 0 ]; then
     echo "error: starting docker containers"
     exit 1
@@ -187,13 +245,13 @@ start() {
 
   echo "info: configuring network"
 
-  grpc_demo_setup
+  grpc_demo_setup $demo_config_options
   if [ $? -ne 0 ]; then
     echo "error: configuring vpp-agent"
     exit 1
   fi
 
-  sleep 1
+  sleep 5
   (sudo ip link set netns $(sudo docker inspect --format '{{.State.Pid}}' initiator) dev wan1 \
     && sudo docker exec initiator ip addr add 172.16.0.1/24 dev wan1 \
     && sudo docker exec initiator ip link set wan1 up \
@@ -221,6 +279,9 @@ stop() {
 
   sudo docker stop responder &> /dev/null
   sudo docker container rm responder &> /dev/null
+
+  sudo docker stop redis &> /dev/null
+  sudo docker container rm redis &> /dev/null
 
   sudo ipsec stop &> /dev/null
 }

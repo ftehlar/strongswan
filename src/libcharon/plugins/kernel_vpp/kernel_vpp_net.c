@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Copyright (c) 2018-2019 Cisco and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,11 +22,6 @@
 #include "configurator/configurator.grpc-c.h"
 #include "kernel_vpp_net.h"
 #include "kernel_vpp_grpc.h"
-
-#define NOTIF_TYPE_UPDOWN INTERFACES__INTERFACE_NOTIFICATION__NOTIF_TYPE__UPDOWN
-#define EV_STATUS_DEL INTERFACES__INTERFACES_STATE__INTERFACE__STATUS__DELETED
-#define EV_STATUS_UP INTERFACES__INTERFACES_STATE__INTERFACE__STATUS__UP
-#define EV_STATUS_DOWN INTERFACES__INTERFACES_STATE__INTERFACE__STATUS__DOWN
 
 typedef struct private_kernel_vpp_net_t private_kernel_vpp_net_t;
 
@@ -137,11 +132,7 @@ static status_t manage_route(private_kernel_vpp_net_t *this, bool add,
     host_t *dst_ip_addr;
     int family;
     char ippref[128];
-    Vpp__ConfigData data = VPP__CONFIG_DATA__INIT;
-    Configurator__UpdateResponse *put_rsp = NULL;
-    Configurator__DeleteResponse *del_rsp = NULL;
     Vpp__L3__Route route = VPP__L3__ROUTE__INIT;
-    Vpp__L3__Route *routes;
 
     route.has_type = TRUE;
     route.type = VPP__L3__ROUTE__ROUTE_TYPE__INTRA_VRF;
@@ -186,20 +177,7 @@ static status_t manage_route(private_kernel_vpp_net_t *this, bool add,
         route.next_hop_addr = nh_addr;
     }
 
-    data.n_routes = 1;
-    data.routes = &routes;
-    data.routes[0] = &route;
-    if (add)
-    {
-        rc = vac->put(vac, &data, &put_rsp);
-        configurator__update_response__free_unpacked(put_rsp, 0);
-    }
-    else
-    {
-        rc = vac->del(vac, &data, &del_rsp);
-        configurator__delete_response__free_unpacked(del_rsp, 0);
-    }
-
+    rc = vac->update_route(vac, &route, add);
     if (rc == FAILED)
     {
         DBG1(DBG_KNL, "vac %sing route failed", add ? "add" : "remov");
@@ -248,31 +226,27 @@ static bool addr_in_subnet(chunk_t addr, int prefix, chunk_t net, int net_len)
 
 static status_t find_ip_route(fib_path_t *path, int prefix, host_t *dest)
 {
-    Configurator__DumpResponse *rp = NULL;
-    Vpp__L3__Route *route;
-    Vpp__ConfigData *vpp_data;
-    size_t i;
+    Vpp__L3__Route **routes = NULL, *route;
+    size_t i, n_routes = 0;
     bool is_in_sub;
     int address_len = 0;
 
-    status_t status = vac->dump_routes(vac, &rp);
+    status_t status = vac->dump_routes(vac, &routes, &n_routes);
     if (SUCCESS != status)
     {
         DBG1(DBG_KNL, "failed to dump routes from VPP agent!");
         return status;
     }
 
-    vpp_data = rp->dump->vpp_config;
-    if (!vpp_data)
+    if (!routes || n_routes == 0)
     {
         DBG1(DBG_KNL, "kernel_vpp: no vpp data returned!");
-        configurator__dump_response__free_unpacked(rp, 0);
         return FAILED;
     }
 
-    for (i = 0; i < vpp_data->n_routes; i++)
+    for (i = 0; i < n_routes; i++)
     {
-        route = vpp_data->routes[i];
+        route = routes[i];
 
         host_t *net = host_create_from_subnet(route->dst_network,
                 &address_len);
@@ -312,7 +286,7 @@ static status_t find_ip_route(fib_path_t *path, int prefix, host_t *dest)
         net->destroy(net);
     }
 
-    configurator__dump_response__free_unpacked(rp, 0);
+    free_proto_array((void **)routes, n_routes);
 
     return SUCCESS;
 }
@@ -534,7 +508,8 @@ static void update_addrs(private_kernel_vpp_net_t *this, iface_t *entry,
 }
 
 static void update_interfaces(private_kernel_vpp_net_t *this,
-                              Configurator__DumpResponse *rp,
+                              Vpp__Interfaces__Interface **ifaces,
+                              size_t n_ifaces,
                               enumerator_t *enumerator)
 {
     size_t i;
@@ -542,12 +517,12 @@ static void update_interfaces(private_kernel_vpp_net_t *this,
     bool exists = FALSE;
     iface_t *entry;
 
-    if (!rp || !rp->dump || !rp->dump->vpp_config)
+    if (!ifaces || n_ifaces == 0)
         return;
 
-    for (i = 0; i < rp->dump->vpp_config->n_interfaces; i++)
+    for (i = 0; i < n_ifaces; i++)
     {
-        iface = rp->dump->vpp_config->interfaces[i];
+        iface = ifaces[i];
 
         if (!iface->name)
         {
@@ -577,9 +552,9 @@ static void update_interfaces(private_kernel_vpp_net_t *this,
             this->ifaces->insert_last(this->ifaces, entry);
         }
         update_addrs(this, entry, iface);
+        vpp__interfaces__interface__free_unpacked(iface, 0);
     }
-
-    configurator__dump_response__free_unpacked(rp, 0);
+    free(ifaces);
 }
 
 static void process_iface_event(private_kernel_vpp_net_t *this,
@@ -679,23 +654,25 @@ static status_t register_for_iface_events(private_kernel_vpp_net_t *this)
 static void *net_update_thread_fn(private_kernel_vpp_net_t *this)
 {
     status_t rv;
-    Configurator__DumpResponse *rp = NULL;
+    Vpp__Interfaces__Interface **ifaces = NULL;
+    size_t n_ifaces;
     enumerator_t *enumerator;
 
     while (1)
     {
-        rp = NULL;
-        status_t status = vac->dump_interfaces(vac, &rp);
+        ifaces = NULL;
+        status_t status = vac->dump_interfaces(vac, &ifaces, &n_ifaces);
         if (status == SUCCESS)
         {
             this->mutex->lock(this->mutex);
             enumerator = this->ifaces->create_enumerator(this->ifaces);
-            update_interfaces(this, rp, enumerator);
+            update_interfaces(this, ifaces, n_ifaces, enumerator);
             enumerator->destroy(enumerator);
             this->mutex->unlock(this->mutex);
         }
 
-        if (!this->events_on)
+        /* notifications are supported only for grpc */
+        if (vac->is_grpc_channel && !this->events_on)
         {
             rv = register_for_iface_events(this);
 

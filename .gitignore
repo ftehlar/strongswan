@@ -57,4 +57,11 @@ test-driver
 third_party/vpp_agent_c_api/models/
 third_party/vpp_agent_c_api/m4/
 third_party/vpp_agent_c_api/grpc_demo_setup
-third_party/vpp_agent_c_api/dataconfigurator/
+third_party/vpp_agent_c_api/configurator/
+third_party/vpp_agent_c_api/models
+*.pb-c.h
+*.pb-c.c
+*.log
+*.trs
+third_party/vpp_agent_c_api/test/test_json_to_proto
+third_party/vpp_agent_c_api/test/test_proto_to_json

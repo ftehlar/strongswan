@@ -1,3 +1,4 @@
+
 # Copyright (c) 2019 Cisco and/or its affiliates.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,23 +13,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-AC_INIT([vpp_agent_c_api],[5.7.2dr2])
+TESTS = test_proto_to_json \
+		test_json_to_proto
 
-AC_CONFIG_HEADERS([config.h])
+check_PROGRAMS = test_proto_to_json \
+				 test_json_to_proto
 
-AC_PROG_CC
-AM_PROG_CC_C_O
-AC_PROG_LIBTOOL
-AC_PROG_INSTALL
+AM_CLAGS = -Og
 
-LT_INIT([shared])
-AM_INIT_AUTOMAKE([foreign subdir-objects])
+test_json_to_proto_SOURCES = \
+	vaa_test.pb-c.c vaa_test.pb-c-h \
+	test_json_to_proto.c
 
-PKG_CHECK_MODULES([LIBPROTOBUF_C], [libprotobuf-c >= 1.2.1])
+test_proto_to_json_SOURCES = \
+	vaa_test.pb-c.c vaa_test.pb-c-h \
+	test_proto_to_json.c
 
-AC_PATH_PROG([PROTOC_C], [protoc-c])
-AS_IF([test -z "$PROTOC_C"],
-            [AC_MSG_ERROR([The protoc-c program was not found!])])
+test_json_to_proto_LDADD = $(LIBPROTOBUF_C_LIBS) ../libvpp-agent-api.la \
+					   -lgrpc-c -lgrpc
+test_proto_to_json_LDADD = $(LIBPROTOBUF_C_LIBS) ../libvpp-agent-api.la \
+					   -lgrpc-c -lgrpc
 
-AC_CONFIG_FILES([Makefile test/Makefile])
-AC_OUTPUT
+vaa_test.pb-c.c: vaa_test.proto
+	@PROTOC_C@ --c_out=. -I. vaa_test.proto

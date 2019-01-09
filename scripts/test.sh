@@ -306,6 +306,9 @@ sonarcloud)
 	;;
 vpp)
     TARGET=
+    cd third_party/vpp_agent_c_api
+    make check
+    cd -
     sudo make install
     ./scripts/dev-env.sh start
     sudo docker exec -it initiator /bin/ping 10.10.10.1 -c 1 || exit $?

@@ -4,3 +4,6 @@
 [submodule "third_party/vpp-agent"]
 	path = third_party/vpp-agent
 	url = https://github.com/ligato/vpp-agent
+[submodule "third_party/hiredis"]
+	path = third_party/hiredis
+	url = https://github.com/redis/hiredis

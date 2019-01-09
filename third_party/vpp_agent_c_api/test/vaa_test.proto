@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+message Person {
+  string name = 1;
+  uint32 id = 2;
+  string email = 3;
+
+  enum PhoneType {
+    MOBILE = 0;
+    HOME = 1;
+    WORK = 2;
+  }
+
+  message PhoneNumber {
+    string number = 1;
+    PhoneType type = 2;
+  }
+
+  repeated PhoneNumber phones = 4;
+
+  oneof Position {
+    uint32 internal_employers_id = 5;
+    string external_workers_location = 6;
+  }
+  PhoneNumber empty_message = 7;
+}
+

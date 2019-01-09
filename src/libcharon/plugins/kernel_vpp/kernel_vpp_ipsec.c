@@ -328,28 +328,17 @@ static status_t convert_int_alg(uint16_t alg, uint16_t *vpp_alg)
  */
 static status_t delete_tunnel(tunnel_t *tp)
 {
-    Vpp__ConfigData data = VPP__CONFIG_DATA__INIT;
     Vpp__Interfaces__Interface tunnel = VPP__INTERFACES__INTERFACE__INIT;
-    Vpp__Interfaces__Interface *tunnels[1];
-
-    Configurator__DeleteResponse *rsp = NULL;
-
-    data.interfaces = tunnels;
-    data.interfaces[0] = &tunnel;
-    data.n_interfaces = 1;
-
     status_t rc;
 
     tunnel.name = tp->if_name;
 
-    rc = vac->del(vac, &data, &rsp);
+    rc = vac->update_vpp_interface(vac, &tunnel, FALSE /* is_add */);
     if (rc == FAILED)
     {
         DBG1(DBG_KNL, "kernel_vpp: error communicating with grpc");
         return FAILED;
     }
-
-    configurator__delete_response__free_unpacked(rsp, 0);
     return SUCCESS;
 }
 
@@ -449,17 +438,10 @@ static status_t vpp_add_del_route(private_kernel_vpp_ipsec_t *this,
 static status_t create_tunnel(tunnel_t *tp)
 {
     status_t rc;
-    Vpp__ConfigData data = VPP__CONFIG_DATA__INIT;
     Vpp__Interfaces__Interface tun = VPP__INTERFACES__INTERFACE__INIT;
-    Vpp__Interfaces__Interface *tunnels[1];
     Vpp__Interfaces__Interface__Unnumbered ui =
         VPP__INTERFACES__INTERFACE__UNNUMBERED__INIT;
     Vpp__Interfaces__IPSecLink ipsec = VPP__INTERFACES__IPSEC_LINK__INIT;
-    Configurator__UpdateResponse *rsp = NULL;
-
-    data.interfaces = tunnels;
-    data.interfaces[0] = &tun;
-    data.n_interfaces = 1;
 
     tun.name = tp->if_name;
     tun.has_type = TRUE;
@@ -494,14 +476,13 @@ static status_t create_tunnel(tunnel_t *tp)
     ipsec.remote_integ_key = tp->dst_int_key;
     ipsec.remote_crypto_key = tp->dst_enc_key;
 
-    rc = vac->put(vac, &data, &rsp);
+    rc = vac->update_vpp_interface(vac, &tun, TRUE /* is_add */);
     if (rc == FAILED)
     {
         DBG1(DBG_KNL, "kernel_vpp: error communicating with grpc");
         return FAILED;
     }
 
-    configurator__update_response__free_unpacked(rsp, 0);
     return SUCCESS;
 }
 

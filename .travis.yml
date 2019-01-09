@@ -31,6 +31,8 @@ after_success:
 
 after_failure:
   - cat config.log
+  - cat /tmp/charon.log
+  - cat /tmp/build.log
 
 env:
   global:
@@ -38,4 +40,5 @@ env:
     - LEAK_DETECTIVE=no
     - MONOLITHIC=no
   matrix:
-    - TEST=vpp VPP_AGENT_VERSION=dev
+    - TEST=vpp VPP_AGENT_VERSION=dev VPP_CHANNEL=grpc
+    - TEST=vpp VPP_AGENT_VERSION=dev VPP_CHANNEL=redis

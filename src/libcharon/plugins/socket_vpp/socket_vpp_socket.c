@@ -347,13 +347,9 @@ METHOD(socket_t, destroy, void,
 
 static status_t register_punt_socket(vac_t *vac,
                                      uint16_t port,
-                                     char *read_path,
-                                     char *name)
+                                     char *read_path)
 {
-    Vpp__ConfigData data = VPP__CONFIG_DATA__INIT;
     Vpp__Punt__ToHost punt = VPP__PUNT__TO_HOST__INIT;
-    Configurator__UpdateResponse *rp = NULL;
-    Vpp__Punt__ToHost *punts[1];
 
     punt.has_port = 1;
     punt.has_l3_protocol = 1;
@@ -364,17 +360,12 @@ static status_t register_punt_socket(vac_t *vac,
     punt.l3_protocol = VPP__PUNT__L3_PROTOCOL__ALL;
     punt.l4_protocol = VPP__PUNT__L4_PROTOCOL__UDP;
 
-    data.n_punt_tohosts = 1;
-    data.punt_tohosts = punts;
-    data.punt_tohosts[0] = &punt;
-
     /* Register punt socket for IKEv2 port in VPP */
-    if (vac->put(vac, &data, &rp) != SUCCESS)
+    if (vac->update_punt_socket(vac, &punt, TRUE) != SUCCESS)
     {
         DBG1(DBG_LIB, "socket_vpp: register punt socket faield!");
         return FAILED;
     }
-    configurator__update_response__free_unpacked(rp, 0);
     return SUCCESS;
 }
 
@@ -429,33 +420,29 @@ static status_t create_read_socket(struct sockaddr_un *saddr,
 
 static status_t get_vpp_socket_path(vac_t *vac, char **path)
 {
-    Configurator__DumpResponse *rp = NULL;
     status_t status = FAILED;
-    Vpp__Punt__ToHost *punt;
+    Vpp__Punt__ToHost **punts = NULL;
+    size_t n = 0, i;
 
-    status = vac->dump_punts(vac, &rp);
+    status = vac->dump_punts(vac, &punts, &n);
     if (status != SUCCESS)
     {
         DBG1(DBG_LIB, "failed to dump punts from VPP!");
         goto out;
     }
 
-    if (!rp || !rp->dump || !rp->dump->vpp_config ||
-            !rp->dump->vpp_config->punt_tohosts)
-        goto out;
-
-    if (rp->dump->vpp_config->n_punt_tohosts < 1)
+    if (n == 0 || !punts)
     {
         DBG1(DBG_LIB, "expected punt entry, got none!");
         goto out;
     }
-    punt = rp->dump->vpp_config->punt_tohosts[0];
-
-    *path = strdup(punt->socket_path);
+    *path = strdup(punts[0]->socket_path);
 
     status = SUCCESS;
 out:
-    configurator__dump_response__free_unpacked(rp, 0);
+    for (i = 0; i < n; i++)
+        vpp__punt__to_host__free_unpacked(punts[i], 0);
+    free(punts);
 
     return status;
 }
@@ -468,8 +455,7 @@ static status_t register_paths(private_socket_vpp_socket_t *this)
     {
         status = register_punt_socket(this->vac,
                 this->port,
-                this->sock_port_path,
-                SOCK_NAME_PORT);
+                this->sock_port_path);
         if (status == SUCCESS)
         {
             this->is_port_path_registered = TRUE;
@@ -487,8 +473,7 @@ static status_t register_paths(private_socket_vpp_socket_t *this)
         {
             status = register_punt_socket(this->vac,
                     this->natt,
-                    this->sock_natt_path,
-                    SOCK_NAME_NATT);
+                    this->sock_natt_path);
             if (status == SUCCESS)
             {
                 this->is_natt_path_registered = TRUE;

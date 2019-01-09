@@ -16,17 +16,90 @@
 
 #include <stdio.h>
 #include "configurator/configurator.grpc-c.h"
+#include "hiredis/hiredis.h"
+#include "vaa_json.h"
 
-int main()
+#define REDIS_IP "127.0.0.1"
+#define REDIS_PORT 6380
+#define VPP_AGENT_HOST "127.0.0.1:9111"
+#define KEY_PFX "/vnf-agent/vpp1"
+
+int configure_vpp_agent(Configurator__UpdateRequest *rq)
 {
     grpc_c_client_t *client;
     grpc_c_init(GRPC_THREADS, NULL);
+    Configurator__UpdateResponse *rsp = NULL;
 
-    client = grpc_c_client_init_by_host("127.0.0.1:9111", "strongswan", NULL,
+    client = grpc_c_client_init_by_host(VPP_AGENT_HOST, "test_setup", NULL,
             NULL);
 
+    int rpc_status = configurator__configurator__update(client,
+            NULL, /* metadata array */
+            0, /* flags */
+            rq,
+            &rsp,
+            NULL /* status */,
+            -1 /* timeout */);
+
+    printf("vpp_agent result: %d\n", rpc_status);
+    configurator__update_response__free_unpacked(rsp, 0);
+    return rpc_status;
+}
+
+static int set_item(redisContext *c, void *proto, char *key)
+{
+    char *msg = vaa_to_json(proto);
+    if (!msg) {
+        fprintf(stderr, "failed to convert interface0!\n");
+        return 1;
+    }
+    void *reply = redisCommand(c, "set %s %s", key, msg);
+    if (NULL == reply) {
+        printf("error executing command: %s\n", c->errstr);
+        return 1;
+    }
+    printf("-- key set: %s\n  %s\n", key, msg);
+    free(msg);
+    return 0;
+}
+
+int configure_redis(Configurator__UpdateRequest *rq)
+{
+    redisContext *c = redisConnect(REDIS_IP, REDIS_PORT);
+
+    if (c == NULL || c->err) {
+        if (c) {
+            printf("Error: %s\n", c->errstr);
+        } else {
+            printf("Can't allocate redis context\n");
+        }
+        return 1;
+    }
+    if (set_item(c, (void *)rq->update->linux_config->interfaces[0],
+                KEY_PFX "/config/linux/interfaces/v2/interface/wan0")) {
+        return 1;
+    }
+    if (set_item(c, (void *)rq->update->linux_config->interfaces[1],
+                KEY_PFX "/config/linux/interfaces/v2/interface/wan1")) {
+        return 1;
+    }
+    if (set_item(c, (void *)rq->update->vpp_config->interfaces[0],
+                KEY_PFX "/config/vpp/v2/interfaces/tap0")) {
+        return 1;
+    }
+    if (set_item(c, (void *)rq->update->vpp_config->interfaces[1],
+                KEY_PFX "/config/vpp/v2/interfaces/wan0")) {
+        return 1;
+    }
+
+    return 0;
+}
+
+int main(int argc, char *argv[])
+{
+    int rc = EXIT_FAILURE;
     Configurator__UpdateRequest rq = CONFIGURATOR__UPDATE_REQUEST__INIT;
-    Configurator__UpdateResponse *rsp = NULL;
+
     Linux__Interfaces__Interface *wans[2];
     Linux__Interfaces__Interface wan0 = LINUX__INTERFACES__INTERFACE__INIT;
     Linux__Interfaces__Interface wan1 = LINUX__INTERFACES__INTERFACE__INIT;
@@ -106,15 +179,13 @@ int main()
     vpp_data.interfaces[0] = &tap;
     vpp_data.interfaces[1] = &af;
 
-    int rpc_status = configurator__configurator__update(client,
-            NULL, /* metadata array */
-            0, /* flags */
-            &rq,
-            &rsp,
-            NULL /* status */,
-            -1 /* timeout */);
+    if (argc > 1 && !strcmp(argv[1], "--use-redis")) {
+        printf("info: using redis %s:%d\n", REDIS_IP, REDIS_PORT);
+        rc = configure_redis(&rq);
+    } else {
+        printf("info: using vpp-agent %s\n", VPP_AGENT_HOST);
+        rc = configure_vpp_agent(&rq);
+    }
 
-    printf("rc: %d\n", rpc_status);
-
-    return rpc_status;
+    return !rc ? EXIT_SUCCESS : EXIT_FAILURE;
 }
