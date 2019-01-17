@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Cisco and/or its affiliates.
+ * Copyright (c) 2018-2019 Cisco and/or its affiliates.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@
 #include <collections/array.h>
 #include <collections/hashtable.h>
 
-#include "vpp/model/rpc/rpc.grpc-c.h"
+#include "configurator/configurator.grpc-c.h"
 #include "kernel_vpp_grpc.h"
 
 #define VPP_AGENT_DEFAULT_HOST "localhost:9111"
@@ -34,7 +34,8 @@ typedef struct private_vac_t private_vac_t;
 vac_t *vac;
 
 /* common dump request message */
-static Rpc__DumpRequest rq = RPC__DUMP_REQUEST__INIT;
+static Dataconfigurator__DumpRequest dump_request =
+        DATACONFIGURATOR__DUMP_REQUEST__INIT;
 
 /**
  * Private variables and functions of vac_t class.
@@ -52,12 +53,18 @@ struct private_vac_t {
 };
 
 METHOD(vac_t, vac_put, status_t, private_vac_t *this,
-        Rpc__DataRequest *rq, Rpc__PutResponse **rp)
+        Vpp__ConfigData *data, Dataconfigurator__UpdateResponse **rp)
 {
-    int rpc_status = rpc__data_change_service__put (this->grpc_client,
+    Dataconfigurator__UpdateRequest rq = DATACONFIGURATOR__UPDATE_REQUEST__INIT;
+    Dataconfigurator__Config config_data = DATACONFIGURATOR__CONFIG__INIT;
+    config_data.vpp_config = data;
+    rq.update = &config_data;
+
+    int rpc_status = dataconfigurator__configurator__update(
+            this->grpc_client,
             NULL, /* metadata array */
             0, /* flags */
-            rq,
+            &rq,
             rp,
             NULL /* status, ignored due to vpp-agent not filling it */,
             -1 /* timeout */);
@@ -66,12 +73,18 @@ METHOD(vac_t, vac_put, status_t, private_vac_t *this,
 }
 
 METHOD(vac_t, vac_del, status_t, private_vac_t *this,
-        Rpc__DataRequest *rq, Rpc__DelResponse **rp)
+        Vpp__ConfigData *data, Dataconfigurator__DeleteResponse **rp)
 {
-    int rpc_status = rpc__data_change_service__del (this->grpc_client,
+    Dataconfigurator__DeleteRequest rq = DATACONFIGURATOR__DELETE_REQUEST__INIT;
+    Dataconfigurator__Config config_data = DATACONFIGURATOR__CONFIG__INIT;
+    config_data.vpp_config = data;
+    rq.delete_ = &config_data;
+
+    int rpc_status = dataconfigurator__configurator__delete (
+            this->grpc_client,
             NULL, /* metadata array */
             0, /* flags */
-            rq,
+            &rq,
             rp,
             NULL /* status, ignored due to vpp-agent not filling it */,
             -1 /* timeout */);
@@ -80,12 +93,13 @@ METHOD(vac_t, vac_del, status_t, private_vac_t *this,
 }
 
 METHOD(vac_t, vac_dump_interfaces, status_t, private_vac_t *this,
-        Rpc__InterfaceResponse **rp)
+        Dataconfigurator__DumpResponse **rp)
 {
-    int rpc_status = rpc__data_dump_service__dump_interfaces(this->grpc_client,
+    int rpc_status = dataconfigurator__configurator__dump(
+            this->grpc_client,
             NULL, /* metadata array */
             0, /* flags */
-            &rq,
+            &dump_request,
             rp,
             NULL /* status, ignored due to vpp-agent not filling it */,
             -1 /* timeout */);
@@ -93,13 +107,13 @@ METHOD(vac_t, vac_dump_interfaces, status_t, private_vac_t *this,
 }
 
 METHOD(vac_t, vac_dump_routes, status_t, private_vac_t *this,
-        Rpc__RoutesResponse **rp)
+        Dataconfigurator__DumpResponse **rp)
 {
-    int rpc_status = rpc__data_dump_service__dump_routes(
+    int rpc_status = dataconfigurator__configurator__dump(
             this->grpc_client,
             NULL, /* metadata array */
             0, /* flags */
-            &rq,
+            &dump_request,
             rp,
             NULL /* status, ignored due to vpp-agent not filling it */,
             -1 /* timeout */);
@@ -107,24 +121,27 @@ METHOD(vac_t, vac_dump_routes, status_t, private_vac_t *this,
 }
 
 METHOD(vac_t, vac_dump_ipsec_tunnels, status_t, private_vac_t *this,
-        Rpc__IPSecTunnelResponse **rp)
+        Dataconfigurator__DumpResponse **rp)
 {
-    int rpc_status = rpc__data_dump_service__dump_ipsec_tunnels(
+    int rpc_status = dataconfigurator__configurator__dump(
             this->grpc_client,
             NULL, /* metadata array */
             0, /* flags */
-            &rq,
+            &dump_request,
             rp,
             NULL /* status, ignored due to vpp-agent not filling it */,
             -1 /* timeout */);
     return rpc_status ? FAILED : SUCCESS;
 }
 
-METHOD(vac_t, vac_register_events, status_t, private_vac_t *this,
-        Rpc__NotificationRequest *rq, grpc_c_client_callback_t *cb,
-        void *tag)
+METHOD(vac_t,
+       vac_register_events, status_t,
+       private_vac_t *this,
+       Dataconfigurator__NotificationRequest *rq,
+       grpc_c_client_callback_t *cb,
+       void *tag)
 {
-    int rpc_status = rpc__notification_service__get__async(
+    int rpc_status = dataconfigurator__configurator__notify__async(
             this->grpc_client,
             NULL, /* metadata array */
             0, /* flags */
@@ -140,14 +157,13 @@ METHOD(vac_t, destroy, void, private_vac_t *this)
 }
 
 METHOD(vac_t, vac_dump_punts, status_t, private_vac_t *this,
-        Rpc__PuntResponse **rp)
+        Dataconfigurator__DumpResponse **rp)
 {
-
-    int rpc_status = rpc__data_dump_service__dump_punt(
+    int rpc_status = dataconfigurator__configurator__dump(
             this->grpc_client,
             NULL, /* metadata array */
             0, /* flags */
-            &rq,
+            &dump_request,
             rp,
             NULL /* status, ignored due to vpp-agent not filling it */,
             -1 /* timeout */);

@@ -2,7 +2,8 @@ AM_CPPFLAGS = \
     -I${linux_headers} \
     -I$(top_srcdir)/src/libstrongswan \
     -I$(top_srcdir)/src/libcharon \
-    -I$(top_srcdir)/third_party/vpp_agent_c_api
+    -I$(top_srcdir)/third_party/vpp_agent_c_api \
+    -I$(top_srcdir)/third_party/vpp_agent_c_api/models
 
 AM_CFLAGS = \
     $(PLUGIN_CFLAGS)

@@ -3,20 +3,30 @@ ACLOCAL_AMFLAGS = -I m4
 
 lib_LTLIBRARIES = libvpp-agent-api.la
 
+AM_CFLAGS = -I$(top_srcdir)/models -I$(top_srcdir)/configurator -Wall -Wextra
+
 libvpp_agent_api_la_SOURCES = \
-	vpp/model/rpc/rpc.grpc-c.c \
-	vpp/model/ipsec/ipsec.grpc-c.c \
-	vpp/model/interfaces/interfaces.grpc-c.c \
-	vpp/model/punt/punt.grpc-c.c \
-	vpp/model/l3/l3.grpc-c.c \
-	vpp/model/acl/acl.grpc-c.c \
-	vpp/model/bfd/bfd.grpc-c.c \
-	vpp/model/l2/l2.grpc-c.c \
-	vpp/model/l4/l4.grpc-c.c \
-	vpp/model/nat/nat.grpc-c.c \
-	vpp/model/stn/stn.grpc-c.c \
-	linux/model/interfaces/interfaces.grpc-c.c \
-	linux/model/l3/l3.grpc-c.c
+	configurator/configurator.grpc-c.c \
+	models/linux/linux.grpc-c.c \
+	models/linux/interfaces/interface.grpc-c.c \
+	models/linux/l3/route.grpc-c.c \
+	models/linux/namespace/namespace.grpc-c.c \
+	models/linux/l3/arp.grpc-c.c \
+	models/linux/vpp/interfaces/state.grpc-c.c \
+	models/vpp/vpp.grpc-c.c \
+	models/vpp/acl/acl.grpc-c.c \
+	models/vpp/interfaces/interface.grpc-c.c \
+	models/vpp/l2/bridge-domain.grpc-c.c \
+	models/vpp/l2/fib.grpc-c.c \
+	models/vpp/l2/xconnect.grpc-c.c \
+	models/vpp/ipsec/ipsec.grpc-c.c \
+	models/vpp/l3/arp.grpc-c.c \
+	models/vpp/l3/l3.grpc-c.c \
+	models/vpp/l3/route.grpc-c.c \
+	models/vpp/nat/nat.grpc-c.c \
+	models/vpp/punt/punt.grpc-c.c \
+	models/vpp/stn/stn.grpc-c.c
+
 
 libvpp_agent_api_la_LIBADD = -lgpr -lgrpc -lprotobuf-c -lprotobuf -lprotobuf-c
 

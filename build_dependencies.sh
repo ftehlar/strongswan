@@ -52,7 +52,7 @@ mkdir build -p; cd build
 echo "Generating app-agent API files"
 cd ${WS}/third_party/vpp-agent
 git submodule update --init 1>> $LOG
-git checkout pantheon-dev 1>> $LOG
+git checkout dev 1>> $LOG
 
 cd ${WS}
 ./gen_api.sh

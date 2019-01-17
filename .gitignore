@@ -54,3 +54,7 @@ cscope.*
 /*.files
 /*.includes
 test-driver
+third_party/vpp_agent_c_api/models/
+third_party/vpp_agent_c_api/m4/
+third_party/vpp_agent_c_api/grpc_demo_setup
+third_party/vpp_agent_c_api/dataconfigurator/

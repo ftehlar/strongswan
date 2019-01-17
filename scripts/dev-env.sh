@@ -36,6 +36,9 @@ plugins {
 punt {
   socket /etc/vpp/punt.sock
 }
+statseg {
+  default
+}
 EOF"
 }
 
@@ -183,20 +186,25 @@ start() {
   sleep 2
 
   echo "info: configuring network"
-  (sudo ip link add wan0 type veth peer name wan1 \
-    && sudo ip link set netns $(sudo docker inspect --format '{{.State.Pid}}' initiator) dev wan1 \
+
+  grpc_demo_setup
+  if [ $? -ne 0 ]; then
+    echo "error: configuring vpp-agent"
+    exit 1
+  fi
+
+  sleep 1
+  (sudo ip link set netns $(sudo docker inspect --format '{{.State.Pid}}' initiator) dev wan1 \
     && sudo docker exec initiator ip addr add 172.16.0.1/24 dev wan1 \
     && sudo docker exec initiator ip link set wan1 up \
     && sudo docker exec initiator iptables -t nat -F \
     && sudo docker exec initiator ip addr add 10.10.20.1/24 dev lo \
-    && sudo docker exec initiator ip route add 10.10.10.0/24 dev wan1 src 10.10.20.1 \
-    && grpc_demo_setup) 1> /dev/null
+    && sudo docker exec initiator ip route add 10.10.10.0/24 dev wan1 src 10.10.20.1) 1> /dev/null
 
   if [ $? -ne 0 ]; then
     echo "error: configuring network"
     exit 1
   fi
-
 
   sudo mkdir -p /etc/ipsec.d/run
   echo "info: starting ipsec"

@@ -19,7 +19,7 @@
 #include <threading/thread.h>
 #include <threading/mutex.h>
 
-#include "vpp/model/rpc/rpc.grpc-c.h"
+#include "configurator/configurator.grpc-c.h"
 #include "kernel_vpp_net.h"
 #include "kernel_vpp_grpc.h"
 
@@ -133,15 +133,18 @@ static status_t manage_route(private_kernel_vpp_net_t *this, bool add,
                              chunk_t dst, uint8_t prefixlen, host_t *gtw,
                              char *name)
 {
-    int rc;
+    status_t rc;
     host_t *dst_ip_addr;
     int family;
     char ippref[128];
-    Rpc__DataRequest rq = RPC__DATA_REQUEST__INIT;
-    Rpc__PutResponse *put_rsp = NULL;
-    Rpc__DelResponse *del_rsp = NULL;
-    L3__StaticRoutes__Route route = L3__STATIC_ROUTES__ROUTE__INIT;
-    L3__StaticRoutes__Route *routes;
+    Vpp__ConfigData data = VPP__CONFIG_DATA__INIT;
+    Dataconfigurator__UpdateResponse *put_rsp = NULL;
+    Dataconfigurator__DeleteResponse *del_rsp = NULL;
+    Vpp__L3__Route route = VPP__L3__ROUTE__INIT;
+    Vpp__L3__Route *routes;
+
+    route.has_type = TRUE;
+    route.type = VPP__L3__ROUTE__ROUTE_TYPE__INTRA_VRF;
 
     if (dst.len == 4)
     {
@@ -170,7 +173,7 @@ static status_t manage_route(private_kernel_vpp_net_t *this, bool add,
     {
         return FAILED;
     }
-    route.dst_ip_addr = ippref;
+    route.dst_network = ippref;
     dst_ip_addr->destroy(dst_ip_addr);
 
     if (gtw)
@@ -183,25 +186,21 @@ static status_t manage_route(private_kernel_vpp_net_t *this, bool add,
         route.next_hop_addr = nh_addr;
     }
 
-    rq.n_staticroutes = 1;
-    rq.staticroutes = &routes;
-    rq.staticroutes[0] = &route;
+    data.n_routes = 1;
+    data.routes = &routes;
+    data.routes[0] = &route;
     if (add)
     {
-        rc = vac->put(vac, &rq, &put_rsp);
+        rc = vac->put(vac, &data, &put_rsp);
+        dataconfigurator__update_response__free_unpacked(put_rsp, 0);
     }
     else
     {
-        rc = vac->del(vac, &rq, &del_rsp);
+        rc = vac->del(vac, &data, &del_rsp);
+        dataconfigurator__delete_response__free_unpacked(del_rsp, 0);
     }
 
-    if (put_rsp)
-        rpc__put_response__free_unpacked(put_rsp, 0);
-
-    if (del_rsp)
-        rpc__del_response__free_unpacked(del_rsp, 0);
-
-    if (rc)
+    if (rc == FAILED)
     {
         DBG1(DBG_KNL, "vac %sing route failed", add ? "add" : "remov");
         return FAILED;
@@ -249,8 +248,9 @@ static bool addr_in_subnet(chunk_t addr, int prefix, chunk_t net, int net_len)
 
 static status_t find_ip_route(fib_path_t *path, int prefix, host_t *dest)
 {
-    Rpc__RoutesResponse *rp = NULL;
-    L3__StaticRoutes__Route *route;
+    Dataconfigurator__DumpResponse *rp = NULL;
+    Vpp__L3__Route *route;
+    Vpp__ConfigData *vpp_data;
     size_t i;
     bool is_in_sub;
     int address_len = 0;
@@ -262,15 +262,23 @@ static status_t find_ip_route(fib_path_t *path, int prefix, host_t *dest)
         return status;
     }
 
-    for (i = 0; i < rp->n_staticroutes; i++)
+    vpp_data = rp->dump->vpp_config;
+    if (!vpp_data)
     {
-        route = rp->staticroutes[i];
+        DBG1(DBG_KNL, "kernel_vpp: no vpp data returned!");
+        dataconfigurator__dump_response__free_unpacked(rp, 0);
+        return FAILED;
+    }
 
-        host_t *net = host_create_from_subnet(route->dst_ip_addr,
+    for (i = 0; i < vpp_data->n_routes; i++)
+    {
+        route = vpp_data->routes[i];
+
+        host_t *net = host_create_from_subnet(route->dst_network,
                 &address_len);
         if (!net)
         {
-            DBG1(DBG_KNL, "failed to convert subnet: %s!", route->dst_ip_addr);
+            DBG1(DBG_KNL, "failed to convert subnet: %s!", route->dst_network);
             return FAILED;
         }
         if (net->get_family(net) != dest->get_family(dest))
@@ -286,7 +294,7 @@ static status_t find_ip_route(fib_path_t *path, int prefix, host_t *dest)
             continue;
 
         if (!route->has_type
-                || route->type == L3__STATIC_ROUTES__ROUTE__ROUTE_TYPE__DROP)
+                || route->type == VPP__L3__ROUTE__ROUTE_TYPE__DROP)
             continue;
 
         if ((route->has_preference && route->preference < path->preference)
@@ -304,8 +312,7 @@ static status_t find_ip_route(fib_path_t *path, int prefix, host_t *dest)
         net->destroy(net);
     }
 
-    if (rp)
-        rpc__routes_response__free_unpacked(rp, 0);
+    dataconfigurator__dump_response__free_unpacked(rp, 0);
 
     return SUCCESS;
 }
@@ -500,7 +507,7 @@ METHOD(kernel_net_t, destroy, void,
  * Update addresses for an iface entry
  */
 static void update_addrs(private_kernel_vpp_net_t *this, iface_t *entry,
-        Interfaces__Interfaces__Interface *iface)
+        Vpp__Interfaces__Interface *iface)
 {
     size_t i;
     char *addr;
@@ -527,20 +534,20 @@ static void update_addrs(private_kernel_vpp_net_t *this, iface_t *entry,
 }
 
 static void update_interfaces(private_kernel_vpp_net_t *this,
-                              Rpc__InterfaceResponse *rp,
+                              Dataconfigurator__DumpResponse *rp,
                               enumerator_t *enumerator)
 {
     size_t i;
-    Interfaces__Interfaces__Interface *iface;
+    Vpp__Interfaces__Interface *iface;
     bool exists = FALSE;
     iface_t *entry;
 
-    if (!rp)
+    if (!rp || !rp->dump || !rp->dump->vpp_config)
         return;
 
-    for (i = 0; i < rp->n_interfaces; i++)
+    for (i = 0; i < rp->dump->vpp_config->n_interfaces; i++)
     {
-        iface = rp->interfaces[i];
+        iface = rp->dump->vpp_config->interfaces[i];
 
         if (!iface->name)
         {
@@ -572,35 +579,49 @@ static void update_interfaces(private_kernel_vpp_net_t *this,
         update_addrs(this, entry, iface);
     }
 
-    rpc__interface_response__free_unpacked(rp, 0);
+    dataconfigurator__dump_response__free_unpacked(rp, 0);
 }
 
 static void process_iface_event(private_kernel_vpp_net_t *this,
-        Rpc__NotificationsResponse *rp)
+        Dataconfigurator__NotificationResponse *rp)
 {
-    Interfaces__InterfacesState__Interface *iface;
+    Vpp__Interfaces__InterfaceNotification *iface;
     iface_t *entry;
     enumerator_t *enumerator;
 
-    if (!rp->nif || !rp->nif->state)
+    if (!rp->notification ||
+            rp->notification->notification_case !=
+                DATACONFIGURATOR__NOTIFICATION__NOTIFICATION_VPP_NOTIFICATION)
         return;
 
-    iface = rp->nif->state;
+    iface = rp->notification->vpp_notification->interface;
+
+    if (!iface || iface->type !=
+            VPP__INTERFACES__INTERFACE_NOTIFICATION__NOTIF_TYPE__UPDOWN)
+        return;
+
+    Vpp__Interfaces__InterfaceState *st = iface->state;
+    if (!st)
+        return;
 
     this->mutex->lock(this->mutex);
     enumerator = this->ifaces->create_enumerator(this->ifaces);
     while (enumerator->enumerate(enumerator, &entry))
     {
-        if (!iface->name)
+        if (!st->name)
         {
             continue;
         }
 
-        if (!strncmp(entry->if_name, iface->name, sizeof(entry->if_name)))
+        if (!strncmp(entry->if_name, st->name, sizeof(entry->if_name)))
         {
-            int is_up = iface->admin_status == EV_STATUS_UP ? TRUE : FALSE;
+            int is_up =
+                (st->admin_status ==
+                    VPP__INTERFACES__INTERFACE_STATE__STATUS__UP)
+                ? TRUE : FALSE;
 
-            if (iface->admin_status == EV_STATUS_DEL)
+            if (st->admin_status ==
+                    VPP__INTERFACES__INTERFACE_STATE__STATUS__DELETED)
             {
                 this->ifaces->remove_at(this->ifaces, enumerator);
                 DBG2(DBG_NET, "interface deleted %s", entry->if_name);
@@ -622,7 +643,7 @@ static void process_iface_event(private_kernel_vpp_net_t *this,
 static void
 event_cb(grpc_c_context_t *context, void *tag, int success)
 {
-    Rpc__NotificationsResponse *rp = NULL;
+    Dataconfigurator__NotificationResponse *rp = NULL;
 
     do {
         if (context->gcc_stream->read(context, (void **)&rp, 0, -1)) {
@@ -632,7 +653,7 @@ event_cb(grpc_c_context_t *context, void *tag, int success)
 
         if (rp) {
             process_iface_event(tag, rp);
-            rpc__notifications_response__free_unpacked(rp, 0);
+            dataconfigurator__notification_response__free_unpacked(rp, 0);
         }
 
     } while(rp);
@@ -641,7 +662,11 @@ event_cb(grpc_c_context_t *context, void *tag, int success)
 static status_t register_for_iface_events(private_kernel_vpp_net_t *this)
 {
     status_t status;
-    Rpc__NotificationRequest rq = RPC__NOTIFICATION_REQUEST__INIT;
+    Dataconfigurator__NotificationRequest rq =
+        DATACONFIGURATOR__NOTIFICATION_REQUEST__INIT;
+
+    rq.has_idx = 1;
+    rq.idx = 0;
 
     status = vac->register_events(vac, &rq, event_cb, this);
 
@@ -654,7 +679,7 @@ static status_t register_for_iface_events(private_kernel_vpp_net_t *this)
 static void *net_update_thread_fn(private_kernel_vpp_net_t *this)
 {
     status_t rv;
-    Rpc__InterfaceResponse *rp = NULL;
+    Dataconfigurator__DumpResponse *rp = NULL;
     enumerator_t *enumerator;
 
     while (1)

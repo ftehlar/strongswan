@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright (c) 2018 Cisco and/or its affiliates.
+# Copyright (c) 2018-2019 Cisco and/or its affiliates.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,68 +14,77 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set -euo pipefail
+
 WS="`pwd`"
-AGENT_ROOT=${WS}/third_party/vpp-agent/plugins
+AGENT_ROOT=${WS}/third_party/vpp-agent/api
 API_DEST=third_party/vpp_agent_c_api
 
-vpp_plugins=(
-    acl
-    bfd
-    ipsec
-    interfaces
-    l2
-    l3
-    l4
-    nat
-    stn
-    rpc
-    punt
-)
+protos=$(find ${AGENT_ROOT} -type f -name '*.proto')
 
-linux_plugins=(
-    interfaces
-    l3
-)
+clean_file()
+{
+    sed '/github.com\|option go_package\|gogoproto/d' "${1}" > "${1}.new"
+    rm "${1}"
+    mv "${1}.new" "${1}"
+}
 
-# Workaround #1: fix messed up import paths in rpc.proto
-sed 's/github.com\/ligato\/vpp-agent\/plugins\///' \
-     ${AGENT_ROOT}/vpp/model/rpc/rpc.proto > ${AGENT_ROOT}/vpp/model/rpc/rpc.proto.new
-rm ${AGENT_ROOT}/vpp/model/rpc/rpc.proto
-mv ${AGENT_ROOT}/vpp/model/rpc/rpc.proto.new ${AGENT_ROOT}/vpp/model/rpc/rpc.proto
+# get rid of unecessary imports and options
+clean_protos()
+{
+    for proto in $protos; do
+        echo "Fixing $proto"
+        clean_file "${proto}"
+    done
+}
 
-for file in ${linux_plugins[@]}
-do
-    echo "generating linux $file.proto"
-    protoc -I ${AGENT_ROOT}/linux/model/${file} \
-        --grpc-c_out=${AGENT_ROOT}/linux/model/${file} \
-        --plugin=third_party/grpc-c/build/compiler/protoc-gen-grpc-c \
-        ${AGENT_ROOT}/linux/model/${file}/${file}.proto
-done
+generate_protos()
+{
 
-for file in ${vpp_plugins[@]}
-do
-    echo "generating vpp $file.proto"
-    protoc -Ithird_party/vpp-agent/plugins -I ${AGENT_ROOT}/vpp/model/${file} \
-        --grpc-c_out=${AGENT_ROOT}/vpp/model/${file} \
-        --plugin=third_party/grpc-c/build/compiler/protoc-gen-grpc-c \
-        ${AGENT_ROOT}/vpp/model/${file}/${file}.proto
-done
+    for proto in $protos; do
+        echo " - $proto";
+        protoc \
+            -I ${AGENT_ROOT}/models \
+            -I ${AGENT_ROOT} \
+            --grpc-c_out=${AGENT_ROOT} \
+            --grpc-c_out=${AGENT_ROOT}/vpp \
+            --grpc-c_out=${AGENT_ROOT}/linux \
+            --plugin=third_party/grpc-c/build/compiler/protoc-gen-grpc-c \
+            "$proto";
+    done
 
+    cp -r ${AGENT_ROOT}/configurator ${API_DEST}
+    mkdir ${API_DEST}/models || true
+    cp -r ${AGENT_ROOT}/{vpp,linux} ${API_DEST}/models
+}
 
-# Workaround #2 for vpp-agent v1 API
+# generated headers contain same definitions used for preventing multiple include
+fix_headers()
+{
+    sed 's/PROTOBUF_C_l3_2eproto__INCLUDED/PROTO_L3_H/' \
+        ${API_DEST}/models/vpp/l3/l3.grpc-c.h > ${API_DEST}/models/vpp/l3/l3.grpc-c.h.new
+    sed 's/PROTOBUF_C_interface_2eproto__INCLUDED/PROTO_INTERFACES_H/' \
+        ${API_DEST}/models/vpp/interfaces/interface.grpc-c.h > ${API_DEST}/models/vpp/interfaces/interface.grpc-c.h.new
+    sed 's/PROTOBUF_C_arp_2eproto__INCLUDED/PROTO_ARP_H/' \
+        ${API_DEST}/models/vpp/l3/arp.grpc-c.h > ${API_DEST}/models/vpp/l3/arp.grpc-c.h.new
+    sed 's/PROTOBUF_C_route_2eproto__INCLUDED/PROTO_ROUTE_H/' \
+        ${API_DEST}/models/vpp/l3/route.grpc-c.h > ${API_DEST}/models/vpp/l3/route.grpc-c.h.new
 
-cp -r ${AGENT_ROOT}/vpp ${API_DEST}
-cp -r ${AGENT_ROOT}/linux ${API_DEST}
+    rm ${API_DEST}/models/vpp/l3/l3.grpc-c.h
+    rm ${API_DEST}/models/vpp/interfaces/interface.grpc-c.h
+    rm ${API_DEST}/models/vpp/l3/arp.grpc-c.h
+    rm ${API_DEST}/models/vpp/l3/route.grpc-c.h
 
-sed 's/PROTOBUF_C_l3_2eproto__INCLUDED/PROTO_L3_H/' \
-    ${API_DEST}/vpp/model/l3/l3.grpc-c.h > ${API_DEST}/vpp/model/l3/l3.grpc-c.h.new
-sed 's/PROTOBUF_C_interfaces_2eproto__INCLUDED/PROTO_INTERFACES_H/' \
-    ${API_DEST}/vpp/model/interfaces/interfaces.grpc-c.h > ${API_DEST}/vpp/model/interfaces/interfaces.grpc-c.h.new
+    mv ${API_DEST}/models/vpp/interfaces/interface.grpc-c.h.new \
+        ${API_DEST}/models/vpp/interfaces/interface.grpc-c.h
+    mv ${API_DEST}/models/vpp/l3/l3.grpc-c.h.new \
+        ${API_DEST}/models/vpp/l3/l3.grpc-c.h
+    mv ${API_DEST}/models/vpp/l3/arp.grpc-c.h.new \
+        ${API_DEST}/models/vpp/l3/arp.grpc-c.h
+    mv ${API_DEST}/models/vpp/l3/route.grpc-c.h.new \
+        ${API_DEST}/models/vpp/l3/route.grpc-c.h
+}
 
-rm ${API_DEST}/vpp/model/l3/l3.grpc-c.h
-rm ${API_DEST}/vpp/model/interfaces/interfaces.grpc-c.h
-
-mv ${API_DEST}/vpp/model/interfaces/interfaces.grpc-c.h.new \
-    ${API_DEST}/vpp/model/interfaces/interfaces.grpc-c.h
-mv ${API_DEST}/vpp/model/l3/l3.grpc-c.h.new \
-    ${API_DEST}/vpp/model/l3/l3.grpc-c.h
+clean_protos
+generate_protos
+fix_headers

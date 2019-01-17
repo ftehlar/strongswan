@@ -16,7 +16,8 @@
  * limitations under the License.
  */
 
-#include "vpp/model/rpc/rpc.grpc-c.h"
+#include "configurator/configurator.grpc-c.h"
+#include "models/vpp/vpp.grpc-c.h"
 
 typedef struct vac_t vac_t;
 
@@ -25,15 +26,29 @@ typedef struct vac_t vac_t;
  */
 struct vac_t {
     void (*destroy)(vac_t *this);
-    status_t (*put)(vac_t *this, Rpc__DataRequest *rq, Rpc__PutResponse **rp);
-    status_t (*del)(vac_t *this, Rpc__DataRequest *rq, Rpc__DelResponse **rp);
 
-    status_t (*dump_interfaces)(vac_t *this, Rpc__InterfaceResponse **rp);
-    status_t (*dump_routes)(vac_t *this, Rpc__RoutesResponse **rp);
-    status_t (*dump_ipsec_tunnels)(vac_t *this, Rpc__IPSecTunnelResponse **rp);
-    status_t (*dump_punts)(vac_t *this, Rpc__PuntResponse **rp);
+    status_t (*put)(vac_t *this,
+                    Vpp__ConfigData *data,
+                    Dataconfigurator__UpdateResponse **rp);
 
-    status_t (*register_events)(vac_t *this, Rpc__NotificationRequest *rq,
+    status_t (*del)(vac_t *this,
+                    Vpp__ConfigData *data,
+                    Dataconfigurator__DeleteResponse **rp);
+
+    status_t (*dump_interfaces)(vac_t *this,
+                                Dataconfigurator__DumpResponse **rp);
+
+    status_t (*dump_routes)(vac_t *this,
+                            Dataconfigurator__DumpResponse **rp);
+
+    status_t (*dump_ipsec_tunnels)(vac_t *this,
+                                   Dataconfigurator__DumpResponse **rp);
+
+    status_t (*dump_punts)(vac_t *this,
+                           Dataconfigurator__DumpResponse **rp);
+
+    status_t (*register_events)(vac_t *this,
+            Dataconfigurator__NotificationRequest *rq,
             grpc_c_client_callback_t *cb, void *tag);
 };
 

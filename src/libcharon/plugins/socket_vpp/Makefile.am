@@ -4,7 +4,8 @@ AM_CPPFLAGS = \
     -I$(top_srcdir)/src/libcharon/plugins/kernel_vpp \
     -I$(top_srcdir)/src/libcharon \
     -I$(top_srcdir)/src/libipsec \
-	-I$(top_srcdir)/third_party/vpp_agent_c_api
+	-I$(top_srcdir)/third_party/vpp_agent_c_api \
+    -I$(top_srcdir)/third_party/vpp_agent_c_api/models
 
 AM_CFLAGS = \
     $(PLUGIN_CFLAGS)
@@ -20,6 +21,6 @@ libstrongswan_socket_vpp_la_SOURCES = \
     socket_vpp_socket.h socket_vpp_socket.c
 
 libstrongswan_socket_vpp_la_LIBADD = $(top_builddir)/src/libipsec/libipsec.la \
-    -lvpp-agent-api -lgrpc -lgpr -lgrpc-c -lprotobuf-c -lprotobuf -lvpp-agent-api
+    -lvpp-agent-api -lgrpc -lgpr -lgrpc-c -lprotobuf-c -lprotobuf
 
 libstrongswan_socket_vpp_la_LDFLAGS = -module -avoid-version

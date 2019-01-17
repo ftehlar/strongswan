@@ -350,33 +350,31 @@ static status_t register_punt_socket(vac_t *vac,
                                      char *read_path,
                                      char *name)
 {
-    Rpc__DataRequest rq = RPC__DATA_REQUEST__INIT;
-    Punt__Punt punt = PUNT__PUNT__INIT;
-    Rpc__PutResponse *rp = NULL;
-    Punt__Punt *punts[1];
+    Vpp__ConfigData data = VPP__CONFIG_DATA__INIT;
+    Vpp__Punt__ToHost punt = VPP__PUNT__TO_HOST__INIT;
+    Dataconfigurator__UpdateResponse *rp = NULL;
+    Vpp__Punt__ToHost *punts[1];
 
     punt.has_port = 1;
     punt.has_l3_protocol = 1;
     punt.has_l4_protocol = 1;
 
-    punt.name = name;
     punt.port = port;
     punt.socket_path = read_path;
-    punt.l3_protocol = PUNT__L3_PROTOCOL__ALL;
-    punt.l4_protocol = PUNT__L4_PROTOCOL__UDP;
+    punt.l3_protocol = VPP__PUNT__L3_PROTOCOL__ALL;
+    punt.l4_protocol = VPP__PUNT__L4_PROTOCOL__UDP;
 
-    rq.n_punts = 1;
-    rq.punts = punts;
-    rq.punts[0] = &punt;
+    data.n_punt_tohosts = 1;
+    data.punt_tohosts = punts;
+    data.punt_tohosts[0] = &punt;
 
     /* Register punt socket for IKEv2 port in VPP */
-    if (vac->put(vac, &rq, &rp) != SUCCESS)
+    if (vac->put(vac, &data, &rp) != SUCCESS)
     {
         DBG1(DBG_LIB, "socket_vpp: register punt socket faield!");
         return FAILED;
     }
-    if (rp)
-        rpc__put_response__free_unpacked(rp, 0);
+    dataconfigurator__update_response__free_unpacked(rp, 0);
     return SUCCESS;
 }
 
@@ -431,9 +429,9 @@ static status_t create_read_socket(struct sockaddr_un *saddr,
 
 static status_t get_vpp_socket_path(vac_t *vac, char **path)
 {
-    Rpc__PuntResponse *rp = NULL;
+    Dataconfigurator__DumpResponse *rp = NULL;
     status_t status = FAILED;
-    Rpc__PuntResponse__PuntEntry *punt;
+    Vpp__Punt__ToHost *punt;
 
     status = vac->dump_punts(vac, &rp);
     if (status != SUCCESS)
@@ -442,32 +440,22 @@ static status_t get_vpp_socket_path(vac_t *vac, char **path)
         goto out;
     }
 
-    if (!rp)
+    if (!rp || !rp->dump || !rp->dump->vpp_config ||
+            !rp->dump->vpp_config->punt_tohosts)
         goto out;
 
-    if (rp->n_punt_entries < 1)
+    if (rp->dump->vpp_config->n_punt_tohosts < 1)
     {
         DBG1(DBG_LIB, "expected punt entry, got none!");
         goto out;
     }
+    punt = rp->dump->vpp_config->punt_tohosts[0];
 
-    punt = rp->punt_entries[0];
-    if (!punt || !punt->has_pathname)
-        goto out;
-
-    /* convert to string */
-    *path = calloc(punt->pathname.len + 1, sizeof(char));
-    if (*path == NULL)
-    {
-        DBG1(DBG_LIB, "mem alloc");
-        goto out;
-    }
-    memcpy(*path, punt->pathname.data, punt->pathname.len);
+    *path = strdup(punt->socket_path);
 
     status = SUCCESS;
 out:
-    if (rp)
-        rpc__punt_response__free_unpacked(rp, 0);
+    dataconfigurator__dump_response__free_unpacked(rp, 0);
 
     return status;
 }

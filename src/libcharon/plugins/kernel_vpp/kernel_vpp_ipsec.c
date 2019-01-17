@@ -19,7 +19,7 @@
 #include <collections/hashtable.h>
 #include <threading/mutex.h>
 
-#include "vpp/model/rpc/rpc.grpc-c.h"
+#include "configurator/configurator.grpc-c.h"
 #include "kernel_vpp_ipsec.h"
 #include "kernel_vpp_grpc.h"
 
@@ -227,7 +227,7 @@ static void dump_tunnel(tunnel_t *tp)
                   "src_enc_key: %s, dst_enc_key: %s, "
                   "src_int_key: %s, dst_int_key: %s, "
                   "esn: %d, udp_encap: %d",
-                  tp->if_name ? tp->if_name : q, 
+                  tp->if_name ? tp->if_name : q,
                   tp->un_if_name ? tp->un_if_name : q,
                   tp->src_spi, tp->dst_spi,
                   tp->src_addr ? tp->src_addr : q,
@@ -266,20 +266,20 @@ static status_t convert_enc_alg(uint16_t alg, chunk_t key, uint16_t *vpp_alg)
 {
     if (ENCR_NULL == alg)
     {
-        *vpp_alg = IPSEC__CRYPTO_ALGORITHM__NONE_CRYPTO;
+        *vpp_alg = VPP__IPSEC__SECURITY_ASSOCIATION__CRYPTO_ALG__NONE_CRYPTO;
     }
     else if (ENCR_AES_CBC == alg)
     {
         switch (key.len * 8)
         {
             case 128:
-                *vpp_alg = IPSEC__CRYPTO_ALGORITHM__AES_CBC_128;
+                *vpp_alg = VPP__IPSEC__SECURITY_ASSOCIATION__CRYPTO_ALG__AES_CBC_128;
                 break;
             case 192:
-                *vpp_alg = IPSEC__CRYPTO_ALGORITHM__AES_CBC_192;
+                *vpp_alg = VPP__IPSEC__SECURITY_ASSOCIATION__CRYPTO_ALG__AES_CBC_192;
                 break;
             case 256:
-                *vpp_alg = IPSEC__CRYPTO_ALGORITHM__AES_CBC_256;
+                *vpp_alg = VPP__IPSEC__SECURITY_ASSOCIATION__CRYPTO_ALG__AES_CBC_256;
                 break;
             default:
                 return FAILED;
@@ -300,22 +300,22 @@ static status_t convert_int_alg(uint16_t alg, uint16_t *vpp_alg)
     switch (alg)
     {
         case AUTH_UNDEFINED:
-            *vpp_alg = IPSEC__INTEG_ALGORITHM__NONE_INTEG;
+            *vpp_alg = VPP__IPSEC__SECURITY_ASSOCIATION__INTEG_ALG__NONE_INTEG;
             break;
         case AUTH_HMAC_MD5_96:
-            *vpp_alg = IPSEC__INTEG_ALGORITHM__MD5_96;
+            *vpp_alg = VPP__IPSEC__SECURITY_ASSOCIATION__INTEG_ALG__MD5_96;
             break;
         case AUTH_HMAC_SHA1_96:
-            *vpp_alg = IPSEC__INTEG_ALGORITHM__SHA1_96;
+            *vpp_alg = VPP__IPSEC__SECURITY_ASSOCIATION__INTEG_ALG__SHA1_96;
             break;
         case AUTH_HMAC_SHA2_256_128:
-            *vpp_alg = IPSEC__INTEG_ALGORITHM__SHA_256_128;
+            *vpp_alg = VPP__IPSEC__SECURITY_ASSOCIATION__INTEG_ALG__SHA_256_128;
             break;
         case AUTH_HMAC_SHA2_384_192:
-            *vpp_alg = IPSEC__INTEG_ALGORITHM__SHA_384_192;
+            *vpp_alg = VPP__IPSEC__SECURITY_ASSOCIATION__INTEG_ALG__SHA_384_192;
             break;
         case AUTH_HMAC_SHA2_512_256:
-            *vpp_alg = IPSEC__INTEG_ALGORITHM__SHA_512_256;
+            *vpp_alg = VPP__IPSEC__SECURITY_ASSOCIATION__INTEG_ALG__SHA_512_256;
             break;
         default:
             return FAILED;
@@ -328,28 +328,28 @@ static status_t convert_int_alg(uint16_t alg, uint16_t *vpp_alg)
  */
 static status_t delete_tunnel(tunnel_t *tp)
 {
-    Ipsec__TunnelInterfaces__Tunnel tunnel = IPSEC__TUNNEL_INTERFACES__TUNNEL__INIT;
-    Ipsec__TunnelInterfaces__Tunnel *tunnels[1];
+    Vpp__ConfigData data = VPP__CONFIG_DATA__INIT;
+    Vpp__Interfaces__Interface tunnel = VPP__INTERFACES__INTERFACE__INIT;
+    Vpp__Interfaces__Interface *tunnels[1];
 
-    Rpc__DataRequest req = RPC__DATA_REQUEST__INIT;
-    Rpc__DelResponse *rsp = NULL;
+    Dataconfigurator__DeleteResponse *rsp = NULL;
 
-    req.tunnels = tunnels;
-    req.tunnels[0] = &tunnel;
-    req.n_tunnels = 1;
+    data.interfaces = tunnels;
+    data.interfaces[0] = &tunnel;
+    data.n_interfaces = 1;
 
     status_t rc;
 
     tunnel.name = tp->if_name;
 
-    rc = vac->del(vac, &req, &rsp);
+    rc = vac->del(vac, &data, &rsp);
     if (rc == FAILED)
     {
         DBG1(DBG_KNL, "kernel_vpp: error communicating with grpc");
         return FAILED;
     }
 
-    rpc__del_response__free_unpacked(rsp, 0);
+    dataconfigurator__delete_response__free_unpacked(rsp, 0);
     return SUCCESS;
 }
 
@@ -448,53 +448,60 @@ static status_t vpp_add_del_route(private_kernel_vpp_ipsec_t *this,
  */
 static status_t create_tunnel(tunnel_t *tp)
 {
-    Ipsec__TunnelInterfaces__Tunnel tunnel = IPSEC__TUNNEL_INTERFACES__TUNNEL__INIT;
-    Ipsec__TunnelInterfaces__Tunnel *tunnels[1];
-
-    Rpc__DataRequest req = RPC__DATA_REQUEST__INIT;
-    Rpc__PutResponse *rsp = NULL;
-
-    req.tunnels = tunnels;
-    req.tunnels[0] = &tunnel;
-    req.n_tunnels = 1;
-
     status_t rc;
+    Vpp__ConfigData data = VPP__CONFIG_DATA__INIT;
+    Vpp__Interfaces__Interface tun = VPP__INTERFACES__INTERFACE__INIT;
+    Vpp__Interfaces__Interface *tunnels[1];
+    Vpp__Interfaces__Interface__Unnumbered ui =
+        VPP__INTERFACES__INTERFACE__UNNUMBERED__INIT;
+    Vpp__Interfaces__IPSecLink ipsec = VPP__INTERFACES__IPSEC_LINK__INIT;
+    Dataconfigurator__UpdateResponse *rsp = NULL;
 
-    tunnel.has_esn = TRUE;
-    tunnel.has_enabled = TRUE;
-    tunnel.has_local_spi = TRUE;
-    tunnel.has_remote_spi = TRUE;
-    tunnel.has_integ_alg = TRUE;
-    tunnel.has_crypto_alg = TRUE;
-    tunnel.has_enable_udp_encap = TRUE;
+    data.interfaces = tunnels;
+    data.interfaces[0] = &tun;
+    data.n_interfaces = 1;
 
-    tunnel.esn = tp->esn;
-    tunnel.name = tp->if_name;
-    tunnel.enable_udp_encap = tp->udp_encap;
-    tunnel.enabled = TRUE;
-    tunnel.unnumbered_name = tp->un_if_name;
+    tun.name = tp->if_name;
+    tun.has_type = TRUE;
+    tun.type = VPP__INTERFACES__INTERFACE__TYPE__IPSEC_TUNNEL;
+    tun.link_case = VPP__INTERFACES__INTERFACE__LINK_IPSEC;
+    tun.has_enabled = TRUE;
+    tun.enabled = TRUE;
+    ui.interface_with_ip = tp->un_if_name;
+    tun.unnumbered = &ui;
+    tun.ipsec = &ipsec;
 
-    tunnel.integ_alg = tp->int_alg;
-    tunnel.crypto_alg = tp->enc_alg;
+    ipsec.has_esn = TRUE;
+    ipsec.has_local_spi = TRUE;
+    ipsec.has_remote_spi = TRUE;
+    ipsec.has_integ_alg = TRUE;
+    ipsec.has_crypto_alg = TRUE;
+    ipsec.has_enable_udp_encap = TRUE;
 
-    tunnel.local_ip = tp->src_addr;
-    tunnel.local_spi = tp->src_spi;
-    tunnel.local_integ_key = tp->src_int_key;
-    tunnel.local_crypto_key = tp->src_enc_key;
+    ipsec.esn = tp->esn;
+    ipsec.enable_udp_encap = tp->udp_encap;
 
-    tunnel.remote_ip = tp->dst_addr;
-    tunnel.remote_spi = tp->dst_spi;
-    tunnel.remote_integ_key = tp->dst_int_key;
-    tunnel.remote_crypto_key = tp->dst_enc_key;
+    ipsec.integ_alg = tp->int_alg;
+    ipsec.crypto_alg = tp->enc_alg;
 
-    rc = vac->put(vac, &req, &rsp);
+    ipsec.local_ip = tp->src_addr;
+    ipsec.local_spi = tp->src_spi;
+    ipsec.local_integ_key = tp->src_int_key;
+    ipsec.local_crypto_key = tp->src_enc_key;
+
+    ipsec.remote_ip = tp->dst_addr;
+    ipsec.remote_spi = tp->dst_spi;
+    ipsec.remote_integ_key = tp->dst_int_key;
+    ipsec.remote_crypto_key = tp->dst_enc_key;
+
+    rc = vac->put(vac, &data, &rsp);
     if (rc == FAILED)
     {
         DBG1(DBG_KNL, "kernel_vpp: error communicating with grpc");
         return FAILED;
     }
 
-    rpc__put_response__free_unpacked(rsp, 0);
+    dataconfigurator__update_response__free_unpacked(rsp, 0);
     return SUCCESS;
 }
 
