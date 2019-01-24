@@ -29,26 +29,23 @@ struct vac_t {
 
     status_t (*put)(vac_t *this,
                     Vpp__ConfigData *data,
-                    Dataconfigurator__UpdateResponse **rp);
+                    Configurator__UpdateResponse **rp);
 
     status_t (*del)(vac_t *this,
                     Vpp__ConfigData *data,
-                    Dataconfigurator__DeleteResponse **rp);
+                    Configurator__DeleteResponse **rp);
 
     status_t (*dump_interfaces)(vac_t *this,
-                                Dataconfigurator__DumpResponse **rp);
+                                Configurator__DumpResponse **rp);
 
     status_t (*dump_routes)(vac_t *this,
-                            Dataconfigurator__DumpResponse **rp);
-
-    status_t (*dump_ipsec_tunnels)(vac_t *this,
-                                   Dataconfigurator__DumpResponse **rp);
+                            Configurator__DumpResponse **rp);
 
     status_t (*dump_punts)(vac_t *this,
-                           Dataconfigurator__DumpResponse **rp);
+                           Configurator__DumpResponse **rp);
 
     status_t (*register_events)(vac_t *this,
-            Dataconfigurator__NotificationRequest *rq,
+            Configurator__NotificationRequest *rq,
             grpc_c_client_callback_t *cb, void *tag);
 };
 

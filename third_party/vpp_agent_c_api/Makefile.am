@@ -12,7 +12,7 @@ libvpp_agent_api_la_SOURCES = \
 	models/linux/l3/route.grpc-c.c \
 	models/linux/namespace/namespace.grpc-c.c \
 	models/linux/l3/arp.grpc-c.c \
-	models/linux/vpp/interfaces/state.grpc-c.c \
+	models/vpp/interfaces/state.grpc-c.c \
 	models/vpp/vpp.grpc-c.c \
 	models/vpp/acl/acl.grpc-c.c \
 	models/vpp/interfaces/interface.grpc-c.c \

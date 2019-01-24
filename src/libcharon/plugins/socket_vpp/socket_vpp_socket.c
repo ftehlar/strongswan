@@ -352,7 +352,7 @@ static status_t register_punt_socket(vac_t *vac,
 {
     Vpp__ConfigData data = VPP__CONFIG_DATA__INIT;
     Vpp__Punt__ToHost punt = VPP__PUNT__TO_HOST__INIT;
-    Dataconfigurator__UpdateResponse *rp = NULL;
+    Configurator__UpdateResponse *rp = NULL;
     Vpp__Punt__ToHost *punts[1];
 
     punt.has_port = 1;
@@ -374,7 +374,7 @@ static status_t register_punt_socket(vac_t *vac,
         DBG1(DBG_LIB, "socket_vpp: register punt socket faield!");
         return FAILED;
     }
-    dataconfigurator__update_response__free_unpacked(rp, 0);
+    configurator__update_response__free_unpacked(rp, 0);
     return SUCCESS;
 }
 
@@ -429,7 +429,7 @@ static status_t create_read_socket(struct sockaddr_un *saddr,
 
 static status_t get_vpp_socket_path(vac_t *vac, char **path)
 {
-    Dataconfigurator__DumpResponse *rp = NULL;
+    Configurator__DumpResponse *rp = NULL;
     status_t status = FAILED;
     Vpp__Punt__ToHost *punt;
 
@@ -455,7 +455,7 @@ static status_t get_vpp_socket_path(vac_t *vac, char **path)
 
     status = SUCCESS;
 out:
-    dataconfigurator__dump_response__free_unpacked(rp, 0);
+    configurator__dump_response__free_unpacked(rp, 0);
 
     return status;
 }

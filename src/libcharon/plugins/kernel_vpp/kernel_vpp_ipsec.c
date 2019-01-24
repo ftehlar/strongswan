@@ -332,7 +332,7 @@ static status_t delete_tunnel(tunnel_t *tp)
     Vpp__Interfaces__Interface tunnel = VPP__INTERFACES__INTERFACE__INIT;
     Vpp__Interfaces__Interface *tunnels[1];
 
-    Dataconfigurator__DeleteResponse *rsp = NULL;
+    Configurator__DeleteResponse *rsp = NULL;
 
     data.interfaces = tunnels;
     data.interfaces[0] = &tunnel;
@@ -349,7 +349,7 @@ static status_t delete_tunnel(tunnel_t *tp)
         return FAILED;
     }
 
-    dataconfigurator__delete_response__free_unpacked(rsp, 0);
+    configurator__delete_response__free_unpacked(rsp, 0);
     return SUCCESS;
 }
 
@@ -455,7 +455,7 @@ static status_t create_tunnel(tunnel_t *tp)
     Vpp__Interfaces__Interface__Unnumbered ui =
         VPP__INTERFACES__INTERFACE__UNNUMBERED__INIT;
     Vpp__Interfaces__IPSecLink ipsec = VPP__INTERFACES__IPSEC_LINK__INIT;
-    Dataconfigurator__UpdateResponse *rsp = NULL;
+    Configurator__UpdateResponse *rsp = NULL;
 
     data.interfaces = tunnels;
     data.interfaces[0] = &tun;
@@ -501,7 +501,7 @@ static status_t create_tunnel(tunnel_t *tp)
         return FAILED;
     }
 
-    dataconfigurator__update_response__free_unpacked(rsp, 0);
+    configurator__update_response__free_unpacked(rsp, 0);
     return SUCCESS;
 }
 

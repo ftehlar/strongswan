@@ -138,8 +138,8 @@ static status_t manage_route(private_kernel_vpp_net_t *this, bool add,
     int family;
     char ippref[128];
     Vpp__ConfigData data = VPP__CONFIG_DATA__INIT;
-    Dataconfigurator__UpdateResponse *put_rsp = NULL;
-    Dataconfigurator__DeleteResponse *del_rsp = NULL;
+    Configurator__UpdateResponse *put_rsp = NULL;
+    Configurator__DeleteResponse *del_rsp = NULL;
     Vpp__L3__Route route = VPP__L3__ROUTE__INIT;
     Vpp__L3__Route *routes;
 
@@ -192,12 +192,12 @@ static status_t manage_route(private_kernel_vpp_net_t *this, bool add,
     if (add)
     {
         rc = vac->put(vac, &data, &put_rsp);
-        dataconfigurator__update_response__free_unpacked(put_rsp, 0);
+        configurator__update_response__free_unpacked(put_rsp, 0);
     }
     else
     {
         rc = vac->del(vac, &data, &del_rsp);
-        dataconfigurator__delete_response__free_unpacked(del_rsp, 0);
+        configurator__delete_response__free_unpacked(del_rsp, 0);
     }
 
     if (rc == FAILED)
@@ -248,7 +248,7 @@ static bool addr_in_subnet(chunk_t addr, int prefix, chunk_t net, int net_len)
 
 static status_t find_ip_route(fib_path_t *path, int prefix, host_t *dest)
 {
-    Dataconfigurator__DumpResponse *rp = NULL;
+    Configurator__DumpResponse *rp = NULL;
     Vpp__L3__Route *route;
     Vpp__ConfigData *vpp_data;
     size_t i;
@@ -266,7 +266,7 @@ static status_t find_ip_route(fib_path_t *path, int prefix, host_t *dest)
     if (!vpp_data)
     {
         DBG1(DBG_KNL, "kernel_vpp: no vpp data returned!");
-        dataconfigurator__dump_response__free_unpacked(rp, 0);
+        configurator__dump_response__free_unpacked(rp, 0);
         return FAILED;
     }
 
@@ -312,7 +312,7 @@ static status_t find_ip_route(fib_path_t *path, int prefix, host_t *dest)
         net->destroy(net);
     }
 
-    dataconfigurator__dump_response__free_unpacked(rp, 0);
+    configurator__dump_response__free_unpacked(rp, 0);
 
     return SUCCESS;
 }
@@ -534,7 +534,7 @@ static void update_addrs(private_kernel_vpp_net_t *this, iface_t *entry,
 }
 
 static void update_interfaces(private_kernel_vpp_net_t *this,
-                              Dataconfigurator__DumpResponse *rp,
+                              Configurator__DumpResponse *rp,
                               enumerator_t *enumerator)
 {
     size_t i;
@@ -579,11 +579,11 @@ static void update_interfaces(private_kernel_vpp_net_t *this,
         update_addrs(this, entry, iface);
     }
 
-    dataconfigurator__dump_response__free_unpacked(rp, 0);
+    configurator__dump_response__free_unpacked(rp, 0);
 }
 
 static void process_iface_event(private_kernel_vpp_net_t *this,
-        Dataconfigurator__NotificationResponse *rp)
+        Configurator__NotificationResponse *rp)
 {
     Vpp__Interfaces__InterfaceNotification *iface;
     iface_t *entry;
@@ -591,7 +591,7 @@ static void process_iface_event(private_kernel_vpp_net_t *this,
 
     if (!rp->notification ||
             rp->notification->notification_case !=
-                DATACONFIGURATOR__NOTIFICATION__NOTIFICATION_VPP_NOTIFICATION)
+                CONFIGURATOR__NOTIFICATION__NOTIFICATION_VPP_NOTIFICATION)
         return;
 
     iface = rp->notification->vpp_notification->interface;
@@ -643,7 +643,7 @@ static void process_iface_event(private_kernel_vpp_net_t *this,
 static void
 event_cb(grpc_c_context_t *context, void *tag, int success)
 {
-    Dataconfigurator__NotificationResponse *rp = NULL;
+    Configurator__NotificationResponse *rp = NULL;
 
     do {
         if (context->gcc_stream->read(context, (void **)&rp, 0, -1)) {
@@ -653,7 +653,7 @@ event_cb(grpc_c_context_t *context, void *tag, int success)
 
         if (rp) {
             process_iface_event(tag, rp);
-            dataconfigurator__notification_response__free_unpacked(rp, 0);
+            configurator__notification_response__free_unpacked(rp, 0);
         }
 
     } while(rp);
@@ -662,8 +662,8 @@ event_cb(grpc_c_context_t *context, void *tag, int success)
 static status_t register_for_iface_events(private_kernel_vpp_net_t *this)
 {
     status_t status;
-    Dataconfigurator__NotificationRequest rq =
-        DATACONFIGURATOR__NOTIFICATION_REQUEST__INIT;
+    Configurator__NotificationRequest rq =
+        CONFIGURATOR__NOTIFICATION_REQUEST__INIT;
 
     rq.has_idx = 1;
     rq.idx = 0;
@@ -679,7 +679,7 @@ static status_t register_for_iface_events(private_kernel_vpp_net_t *this)
 static void *net_update_thread_fn(private_kernel_vpp_net_t *this)
 {
     status_t rv;
-    Dataconfigurator__DumpResponse *rp = NULL;
+    Configurator__DumpResponse *rp = NULL;
     enumerator_t *enumerator;
 
     while (1)

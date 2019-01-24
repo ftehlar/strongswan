@@ -38,4 +38,4 @@ env:
     - LEAK_DETECTIVE=no
     - MONOLITHIC=no
   matrix:
-    - TEST=vpp VPP_AGENT_VERSION=refactor
+    - TEST=vpp VPP_AGENT_VERSION=dev

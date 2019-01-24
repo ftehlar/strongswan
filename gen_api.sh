@@ -47,14 +47,13 @@ generate_protos()
             -I ${AGENT_ROOT}/models \
             -I ${AGENT_ROOT} \
             --grpc-c_out=${AGENT_ROOT} \
-            --grpc-c_out=${AGENT_ROOT}/vpp \
-            --grpc-c_out=${AGENT_ROOT}/linux \
+            --grpc-c_out=${AGENT_ROOT}/models \
             --plugin=third_party/grpc-c/build/compiler/protoc-gen-grpc-c \
             "$proto";
     done
 
     cp -r ${AGENT_ROOT}/configurator ${API_DEST}
-    mkdir ${API_DEST}/models || true
+    mkdir ${API_DEST}/models 2> /dev/null || true
     cp -r ${AGENT_ROOT}/{vpp,linux} ${API_DEST}/models
 }
 

@@ -25,8 +25,8 @@ int main()
     client = grpc_c_client_init_by_host("127.0.0.1:9111", "strongswan", NULL,
             NULL);
 
-    Dataconfigurator__UpdateRequest rq = DATACONFIGURATOR__UPDATE_REQUEST__INIT;
-    Dataconfigurator__UpdateResponse *rsp = NULL;
+    Configurator__UpdateRequest rq = CONFIGURATOR__UPDATE_REQUEST__INIT;
+    Configurator__UpdateResponse *rsp = NULL;
     Linux__Interfaces__Interface *wans[2];
     Linux__Interfaces__Interface wan0 = LINUX__INTERFACES__INTERFACE__INIT;
     Linux__Interfaces__Interface wan1 = LINUX__INTERFACES__INTERFACE__INIT;
@@ -59,7 +59,7 @@ int main()
     wan1.enabled = 1;
 
     Vpp__ConfigData vpp_data = VPP__CONFIG_DATA__INIT;
-    Dataconfigurator__Config data = DATACONFIGURATOR__CONFIG__INIT;
+    Configurator__Config data = CONFIGURATOR__CONFIG__INIT;
     data.vpp_config = &vpp_data;
     data.linux_config = &linux_data;
     rq.update = &data;
@@ -106,7 +106,7 @@ int main()
     vpp_data.interfaces[0] = &tap;
     vpp_data.interfaces[1] = &af;
 
-    int rpc_status = dataconfigurator__configurator__update(client,
+    int rpc_status = configurator__configurator__update(client,
             NULL, /* metadata array */
             0, /* flags */
             &rq,

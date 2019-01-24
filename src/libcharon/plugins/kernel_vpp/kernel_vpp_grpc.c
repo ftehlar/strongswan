@@ -34,8 +34,8 @@ typedef struct private_vac_t private_vac_t;
 vac_t *vac;
 
 /* common dump request message */
-static Dataconfigurator__DumpRequest dump_request =
-        DATACONFIGURATOR__DUMP_REQUEST__INIT;
+static Configurator__DumpRequest dump_request =
+        CONFIGURATOR__DUMP_REQUEST__INIT;
 
 /**
  * Private variables and functions of vac_t class.
@@ -53,14 +53,14 @@ struct private_vac_t {
 };
 
 METHOD(vac_t, vac_put, status_t, private_vac_t *this,
-        Vpp__ConfigData *data, Dataconfigurator__UpdateResponse **rp)
+        Vpp__ConfigData *data, Configurator__UpdateResponse **rp)
 {
-    Dataconfigurator__UpdateRequest rq = DATACONFIGURATOR__UPDATE_REQUEST__INIT;
-    Dataconfigurator__Config config_data = DATACONFIGURATOR__CONFIG__INIT;
+    Configurator__UpdateRequest rq = CONFIGURATOR__UPDATE_REQUEST__INIT;
+    Configurator__Config config_data = CONFIGURATOR__CONFIG__INIT;
     config_data.vpp_config = data;
     rq.update = &config_data;
 
-    int rpc_status = dataconfigurator__configurator__update(
+    int rpc_status = configurator__configurator__update(
             this->grpc_client,
             NULL, /* metadata array */
             0, /* flags */
@@ -73,14 +73,14 @@ METHOD(vac_t, vac_put, status_t, private_vac_t *this,
 }
 
 METHOD(vac_t, vac_del, status_t, private_vac_t *this,
-        Vpp__ConfigData *data, Dataconfigurator__DeleteResponse **rp)
+        Vpp__ConfigData *data, Configurator__DeleteResponse **rp)
 {
-    Dataconfigurator__DeleteRequest rq = DATACONFIGURATOR__DELETE_REQUEST__INIT;
-    Dataconfigurator__Config config_data = DATACONFIGURATOR__CONFIG__INIT;
+    Configurator__DeleteRequest rq = CONFIGURATOR__DELETE_REQUEST__INIT;
+    Configurator__Config config_data = CONFIGURATOR__CONFIG__INIT;
     config_data.vpp_config = data;
     rq.delete_ = &config_data;
 
-    int rpc_status = dataconfigurator__configurator__delete (
+    int rpc_status = configurator__configurator__delete (
             this->grpc_client,
             NULL, /* metadata array */
             0, /* flags */
@@ -93,9 +93,9 @@ METHOD(vac_t, vac_del, status_t, private_vac_t *this,
 }
 
 METHOD(vac_t, vac_dump_interfaces, status_t, private_vac_t *this,
-        Dataconfigurator__DumpResponse **rp)
+        Configurator__DumpResponse **rp)
 {
-    int rpc_status = dataconfigurator__configurator__dump(
+    int rpc_status = configurator__configurator__dump(
             this->grpc_client,
             NULL, /* metadata array */
             0, /* flags */
@@ -107,23 +107,9 @@ METHOD(vac_t, vac_dump_interfaces, status_t, private_vac_t *this,
 }
 
 METHOD(vac_t, vac_dump_routes, status_t, private_vac_t *this,
-        Dataconfigurator__DumpResponse **rp)
+        Configurator__DumpResponse **rp)
 {
-    int rpc_status = dataconfigurator__configurator__dump(
-            this->grpc_client,
-            NULL, /* metadata array */
-            0, /* flags */
-            &dump_request,
-            rp,
-            NULL /* status, ignored due to vpp-agent not filling it */,
-            -1 /* timeout */);
-    return rpc_status ? FAILED : SUCCESS;
-}
-
-METHOD(vac_t, vac_dump_ipsec_tunnels, status_t, private_vac_t *this,
-        Dataconfigurator__DumpResponse **rp)
-{
-    int rpc_status = dataconfigurator__configurator__dump(
+    int rpc_status = configurator__configurator__dump(
             this->grpc_client,
             NULL, /* metadata array */
             0, /* flags */
@@ -137,11 +123,11 @@ METHOD(vac_t, vac_dump_ipsec_tunnels, status_t, private_vac_t *this,
 METHOD(vac_t,
        vac_register_events, status_t,
        private_vac_t *this,
-       Dataconfigurator__NotificationRequest *rq,
+       Configurator__NotificationRequest *rq,
        grpc_c_client_callback_t *cb,
        void *tag)
 {
-    int rpc_status = dataconfigurator__configurator__notify__async(
+    int rpc_status = configurator__configurator__notify__async(
             this->grpc_client,
             NULL, /* metadata array */
             0, /* flags */
@@ -157,9 +143,9 @@ METHOD(vac_t, destroy, void, private_vac_t *this)
 }
 
 METHOD(vac_t, vac_dump_punts, status_t, private_vac_t *this,
-        Dataconfigurator__DumpResponse **rp)
+        Configurator__DumpResponse **rp)
 {
-    int rpc_status = dataconfigurator__configurator__dump(
+    int rpc_status = configurator__configurator__dump(
             this->grpc_client,
             NULL, /* metadata array */
             0, /* flags */
@@ -182,7 +168,6 @@ vac_t *vac_create(char *name)
             .dump_punts = _vac_dump_punts,
             .dump_interfaces = _vac_dump_interfaces,
             .dump_routes = _vac_dump_routes,
-            .dump_ipsec_tunnels = _vac_dump_ipsec_tunnels,
             .register_events = _vac_register_events,
         },
         .host = lib->settings->get_str(lib->settings,
