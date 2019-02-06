@@ -33,12 +33,10 @@ echo "Building gRPC"
 cd third_party/grpc
 git submodule update --init 1>> $LOG
 (CFLAGS="-Wno-implicit-fallthrough -Wno-stringop-overflow -Wno-error=conversion" make && sudo make install) 1>> $LOG
-cd ../../
-
-echo "Building Protobuf"
 cd third_party/protobuf
-(./autogen.sh && ./configure && make && sudo make install) 1>> $LOG
-sudo ldconfig
+make
+sudo make install
+cd ../../
 cd ../../
 
 echo "Building protobuf-c"
