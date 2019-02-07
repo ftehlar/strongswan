@@ -25,6 +25,8 @@ script:
   - ./scripts/test.sh
 
 after_success:
+  make prepare -C deb
+  make build -C deb
   if [ "$TEST" == "coverage" ]; then
     bash <(curl -s https://codecov.io/bash);
   fi
@@ -40,5 +42,5 @@ env:
     - LEAK_DETECTIVE=no
     - MONOLITHIC=no
   matrix:
-    - TEST=vpp VPP_AGENT_VERSION=dev VPP_CHANNEL=grpc
-    - TEST=vpp VPP_AGENT_VERSION=dev VPP_CHANNEL=redis
+    - TEST=vpp VPP_AGENT_VERSION=latest VPP_CHANNEL=grpc
+    - TEST=vpp VPP_AGENT_VERSION=latest VPP_CHANNEL=redis

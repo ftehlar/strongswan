@@ -56,7 +56,7 @@ cscope.*
 test-driver
 third_party/vpp_agent_c_api/models/
 third_party/vpp_agent_c_api/m4/
-third_party/vpp_agent_c_api/grpc_demo_setup
+third_party/vpp_agent_c_api/sswan_vpp_test
 third_party/vpp_agent_c_api/configurator/
 third_party/vpp_agent_c_api/models
 *.pb-c.h

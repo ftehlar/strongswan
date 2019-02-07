@@ -1,0 +1,7 @@
+Package: sswan-vpp
+Version: 5.7.2dr2-vpp-1.0.0
+Architecture: amd64
+Depends: libc-ares2, libgmp10
+Maintainer: Filip Tehlar <ftehlar@cisco.com>
+Description: IPsec VPN solution.
+ sswan-vpp is a IPsec based VPN solution for VPP.

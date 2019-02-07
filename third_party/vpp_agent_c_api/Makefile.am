@@ -34,9 +34,9 @@ libvpp_agent_api_la_SOURCES = \
 
 libvpp_agent_api_la_LIBADD = -lgpr -lgrpc -lprotobuf-c -lprotobuf -lprotobuf-c
 
-bin_PROGRAMS = grpc_demo_setup
+bin_PROGRAMS = sswan_vpp_test
 
-grpc_demo_setup_SOURCES = grpc_demo_setup.c
+sswan_vpp_test_SOURCES = sswan_vpp_test.c
 
-grpc_demo_setup_LDADD = -lvpp-agent-api -lgrpc -lgrpc-c -lprotobuf -lprotobuf \
+sswan_vpp_test_LDADD = -lvpp-agent-api -lgrpc -lgrpc-c -lprotobuf -lprotobuf \
 		-lhiredis

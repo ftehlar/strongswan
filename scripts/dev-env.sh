@@ -139,7 +139,7 @@ charon {
       time_format = %b %e %T
       ike_name = yes
       append = no
-      default = 4
+      default = 2
       flush_line = yes
     }
   }
@@ -219,7 +219,13 @@ start() {
   vpp_conf
   redis_conf
   grpc_conf
-  vpp_plugin_conf
+  if [ -e "$AGENT_CFG_DIR/vpp-plugin.conf" ] ; then
+    sudo rm -f $AGENT_CFG_DIR/vpp-plugin.conf
+  fi
+
+  if [ "$VPP_CHANNEL" = "redis" ] ; then
+    vpp_plugin_conf
+  fi
   strongswan_conf
 
   echo "info: starting docker containers"
@@ -245,7 +251,7 @@ start() {
 
   echo "info: configuring network"
 
-  grpc_demo_setup $demo_config_options
+  sswan_vpp_test $demo_config_options
   if [ $? -ne 0 ]; then
     echo "error: configuring vpp-agent"
     exit 1

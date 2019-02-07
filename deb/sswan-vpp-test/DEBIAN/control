@@ -1,0 +1,6 @@
+Package: sswan-test
+Version: 0.1
+Architecture: amd64
+Depends: sswan-vpp
+Maintainer: Filip Tehlar <ftehlar@cisco.com>
+Description: Config tool for sswan-vpp
