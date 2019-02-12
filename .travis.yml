@@ -25,8 +25,6 @@ script:
   - ./scripts/test.sh
 
 after_success:
-  make prepare -C deb
-  make build -C deb
   if [ "$TEST" == "coverage" ]; then
     bash <(curl -s https://codecov.io/bash);
   fi
