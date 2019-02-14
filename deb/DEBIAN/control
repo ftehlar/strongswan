@@ -1,5 +1,5 @@
 Package: sswan-vpp
-Version: 5.7.2dr2-vpp-1.0.0
+Version: 5.7.2dr2-vpp-1.0.1
 Architecture: amd64
 Depends: libc-ares2, libgmp10
 Maintainer: Filip Tehlar <ftehlar@cisco.com>
