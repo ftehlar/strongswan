@@ -10,6 +10,15 @@ prepare:
 	cp -r DEBIAN $(DIR)
 	cat sswan.files | xargs cp --parents -t $(DIR)
 	cp ipsec.secrets $(DIR)/etc
+
+	mkdir $(DIR)/etc/ipsec.d
+	mkdir $(DIR)/etc/ipsec.d/cacerts
+	mkdir $(DIR)/etc/ipsec.d/run
+	mkdir $(DIR)/etc/ipsec.d/aacerts
+	mkdir $(DIR)/etc/ipsec.d/ocspcerts
+	mkdir $(DIR)/etc/ipsec.d/crls
+	mkdir $(DIR)/etc/ipsec.d/acerts
+
 	mkdir $(DIR)/etc/swanctl
 	cp swanctl.conf $(DIR)/etc/swanctl
 
