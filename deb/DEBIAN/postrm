@@ -1,0 +1,29 @@
+#!/bin/bash
+
+rm /usr/local/lib/libgrpc++_unsecure.so.3
+rm /usr/local/lib/libgrpc++_unsecure.so.1
+rm /usr/local/lib/libgrpc++_unsecure.so
+
+rm /usr/local/lib/libgrpc-c.so.0
+rm /usr/local/lib/libgrpc-c.so
+rm /usr/local/lib/libgrpc_unsecure.so.3
+
+rm /usr/local/lib/libgrpc++_cronet.so.1
+
+rm /usr/local/lib/libprotobuf-c.so.1
+
+rm /usr/local/lib/libgrpc++.so.3
+rm /usr/local/lib/libgrpc++.so.1
+
+rm /usr/local/lib/libvpp-agent-api.so.0
+
+rm /usr/local/lib/libgpr.so.3
+
+rm /usr/local/lib/libgrpc++_reflection.so.3
+rm /usr/local/lib/libgrpc++_reflection.so.1
+
+rm /usr/local/lib/libgrpc++_error_details.so.3
+rm /usr/local/lib/libgrpc++_error_details.so.1
+
+rm /usr/local/lib/libgrpc.so.3
+
