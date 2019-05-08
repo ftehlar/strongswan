@@ -46,6 +46,10 @@ coverage/
 .project
 .metadata/
 .settings/
+*.swp
+*.pb.cc
+*.pb.h
+api/m4/
 /*.config
 /*.creator
 /*.creator.*

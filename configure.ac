@@ -220,7 +220,9 @@ ARG_ENABL_SET([kernel-pfroute], [enable the PF_ROUTE kernel interface.])
 ARG_ENABL_SET([kernel-iph],     [enable the Windows IP Helper based networking backend.])
 ARG_ENABL_SET([kernel-libipsec],[enable the libipsec kernel interface.])
 ARG_ENABL_SET([kernel-wfp],     [enable the Windows Filtering Platform IPsec backend.])
+ARG_ENABL_SET([kernel-vpp],     [enable VPP as IPSec backend.])
 ARG_DISBL_SET([socket-default], [disable default socket implementation for charon.])
+ARG_ENABL_SET([socket-vpp],     [disable default socket implementation for charon.])
 ARG_ENABL_SET([socket-dynamic], [enable dynamic socket implementation for charon])
 ARG_ENABL_SET([socket-win],     [enable Winsock2 based socket implementation for charon])
 # configuration/control plugins
@@ -1451,11 +1453,13 @@ ADD_PLUGIN([kernel-iph],           [c charon])
 ADD_PLUGIN([kernel-pfkey],         [c charon starter nm cmd])
 ADD_PLUGIN([kernel-pfroute],       [c charon starter nm cmd])
 ADD_PLUGIN([kernel-netlink],       [c charon starter nm cmd])
+ADD_PLUGIN([kernel-vpp],           [c charon])
 ADD_PLUGIN([resolve],              [c charon cmd])
 ADD_PLUGIN([save-keys],            [c])
 ADD_PLUGIN([socket-default],       [c charon nm cmd])
 ADD_PLUGIN([socket-dynamic],       [c charon cmd])
 ADD_PLUGIN([socket-win],           [c charon])
+ADD_PLUGIN([socket-vpp],           [c charon])
 ADD_PLUGIN([bypass-lan],           [c charon nm cmd])
 ADD_PLUGIN([connmark],             [c charon])
 ADD_PLUGIN([forecast],             [c charon])
@@ -1629,6 +1633,7 @@ AM_CONDITIONAL(USE_KERNEL_PFROUTE, test x$kernel_pfroute = xtrue)
 AM_CONDITIONAL(USE_KERNEL_LIBIPSEC, test x$kernel_libipsec = xtrue)
 AM_CONDITIONAL(USE_KERNEL_WFP, test x$kernel_wfp = xtrue)
 AM_CONDITIONAL(USE_KERNEL_IPH, test x$kernel_iph = xtrue)
+AM_CONDITIONAL(USE_KERNEL_VPP, test x$kernel_vpp = xtrue)
 AM_CONDITIONAL(USE_WHITELIST, test x$whitelist = xtrue)
 AM_CONDITIONAL(USE_EXT_AUTH, test x$ext_auth = xtrue)
 AM_CONDITIONAL(USE_LOOKIP, test x$lookip = xtrue)
@@ -1686,6 +1691,7 @@ AM_CONDITIONAL(USE_SAVE_KEYS, test x$save_keys = xtrue)
 AM_CONDITIONAL(USE_SOCKET_DEFAULT, test x$socket_default = xtrue)
 AM_CONDITIONAL(USE_SOCKET_DYNAMIC, test x$socket_dynamic = xtrue)
 AM_CONDITIONAL(USE_SOCKET_WIN, test x$socket_win = xtrue)
+AM_CONDITIONAL(USE_SOCKET_VPP, test x$socket_vpp = xtrue)
 AM_CONDITIONAL(USE_BYPASS_LAN, test x$bypass_lan = xtrue)
 AM_CONDITIONAL(USE_CONNMARK, test x$connmark = xtrue)
 AM_CONDITIONAL(USE_FORECAST, test x$forecast = xtrue)
@@ -1951,6 +1957,7 @@ AC_CONFIG_FILES([
 	src/libcharon/plugins/socket_default/Makefile
 	src/libcharon/plugins/socket_dynamic/Makefile
 	src/libcharon/plugins/socket_win/Makefile
+	src/libcharon/plugins/socket_vpp/Makefile
 	src/libcharon/plugins/bypass_lan/Makefile
 	src/libcharon/plugins/connmark/Makefile
 	src/libcharon/plugins/counters/Makefile
@@ -1972,6 +1979,7 @@ AC_CONFIG_FILES([
 	src/libcharon/plugins/kernel_libipsec/Makefile
 	src/libcharon/plugins/kernel_wfp/Makefile
 	src/libcharon/plugins/kernel_iph/Makefile
+	src/libcharon/plugins/kernel_vpp/Makefile
 	src/libcharon/plugins/whitelist/Makefile
 	src/libcharon/plugins/ext_auth/Makefile
 	src/libcharon/plugins/lookip/Makefile

@@ -74,6 +74,7 @@ plugins = \
 	plugins/kernel-netlink.opt \
 	plugins/kernel-pfkey.opt \
 	plugins/kernel-pfroute.opt \
+	plugins/kernel-vpp.opt \
 	plugins/load-tester.opt \
 	plugins/lookip.opt \
 	plugins/ntru.opt \
@@ -87,6 +88,7 @@ plugins = \
 	plugins/revocation.opt \
 	plugins/save-keys.opt \
 	plugins/socket-default.opt \
+	plugins/socket-vpp.opt \
 	plugins/sql.opt \
 	plugins/stroke.opt \
 	plugins/systime-fix.opt \
