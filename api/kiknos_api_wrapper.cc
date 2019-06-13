@@ -108,24 +108,24 @@ add_del_tunnel (kiknos_ipsec_tunnel_t *tun, bool is_add)
     IPSecTunnel t;
 
     t.set_name(tun->name);
-    t.set_esn(tun->esn);
-    t.set_local_ip(tun->local_ip);
-    t.set_remote_ip(tun->remote_ip);
-    t.set_local_spi(tun->local_spi);
-    t.set_remote_spi(tun->remote_spi);
-
-    t.set_crypto_alg((CryptoAlg)tun->crypto_alg);
-    t.set_local_crypto_key(tun->local_crypto_key);
-    t.set_remote_crypto_key(tun->remote_crypto_key);
-
-    t.set_integ_alg((IntegAlg)tun->integ_alg);
-    t.set_local_integ_key(tun->local_integ_key);
-    t.set_remote_integ_key(tun->remote_integ_key);
-
-    t.set_enable_udp_encap(tun->enable_udp_encap);
-    t.set_interface_with_ip(tun->interface_with_ip);
 
     if (is_add) {
+        t.set_esn(tun->esn);
+        t.set_local_ip(tun->local_ip);
+        t.set_remote_ip(tun->remote_ip);
+        t.set_local_spi(tun->local_spi);
+        t.set_remote_spi(tun->remote_spi);
+
+        t.set_crypto_alg((CryptoAlg)tun->crypto_alg);
+        t.set_local_crypto_key(tun->local_crypto_key);
+        t.set_remote_crypto_key(tun->remote_crypto_key);
+
+        t.set_integ_alg((IntegAlg)tun->integ_alg);
+        t.set_local_integ_key(tun->local_integ_key);
+        t.set_remote_integ_key(tun->remote_integ_key);
+
+        t.set_enable_udp_encap(tun->enable_udp_encap);
+        t.set_interface_with_ip(tun->interface_with_ip);
         status = stub->AddTunnel(&ctx, t, &rsp);
     } else {
         status = stub->DelTunnel(&ctx, t, &rsp);
