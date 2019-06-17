@@ -88,16 +88,6 @@ struct private_socket_vpp_socket_t {
     struct sockaddr_un addr_natt;
 
     /**
-     * When ikev2 init and auth
-     * are send to separate
-     * ports we would need
-     * to capture packets
-     * on both ports (500
-     * and 4500).
-     */
-    bool split;
-
-    /**
      * VPP Agent client
      */
     vac_t *vac;
@@ -152,7 +142,7 @@ struct ether_header_t {
 METHOD(socket_t, receiver, status_t,
     private_socket_vpp_socket_t *this, packet_t **out)
 {
-    int rr, ri, count, i, bytes_read = 0;
+    int rr, ri, i, bytes_read = 0;
     host_t *src = NULL, *dst = NULL;
     char buf[this->max_packet];
     packet_t *pkt;
@@ -163,11 +153,9 @@ METHOD(socket_t, receiver, status_t,
             {.fd = this->sock_natt, .events = POLLIN }
     };
 
-    count =  this->split ? 2 : 1;
-
     DBG2(DBG_NET, "socket_vpp: waiting for packets");
     old = thread_cancelability(TRUE);
-    if (poll(pfd, count, -1) <= 0)
+    if (poll(pfd, countof(pfd), -1) <= 0)
     {
         thread_cancelability(old);
         DBG1(DBG_NET, "socket_vpp: error polling sockets");
@@ -177,12 +165,12 @@ METHOD(socket_t, receiver, status_t,
 
     ri = -1;
     rr = ++this->rr_index;
-    this->rr_index = rr = (rr % count) != rr ? 0 : rr;
+    this->rr_index = rr = (rr % countof(pfd)) != rr ? 0 : rr;
 
     if (!(pfd[rr].revents & POLLIN))
     {
         // do 0 -> rr and rr -> count
-        for (i = 0; i < count; i++)
+        for (i = 0; i < countof(pfd); i++)
         {
             if (i == rr)
                 continue;
@@ -205,7 +193,7 @@ METHOD(socket_t, receiver, status_t,
         struct iovec iov[3];
         vpp_packetdesc_t packetdesc;
         ether_header_t eh;
-        ip_packet_t *packet;
+        ip_packet_t *ip_packet;
         chunk_t raw, data;
 
         iov[0].iov_base = &packetdesc;
@@ -227,22 +215,24 @@ METHOD(socket_t, receiver, status_t,
         DBG3(DBG_NET, "socket_vpp: received packet '%b'", buf, bytes_read);
 
         raw = chunk_create(buf, bytes_read);
-        packet = ip_packet_create(raw);
-        if (!packet)
+        ip_packet = ip_packet_create(chunk_clone(raw));
+        if (!ip_packet)
         {
             DBG1(DBG_NET, "socket_vpp: invalid IP packet read from vpp socket");
+            return FAILED;
         }
-        src = packet->get_source(packet);
-        dst = packet->get_destination(packet);
+        src = ip_packet->get_source(ip_packet);
+        dst = ip_packet->get_destination(ip_packet);
         pkt = packet_create();
-        pkt->set_source(pkt, src);
-        pkt->set_destination(pkt, dst);
+        pkt->set_source(pkt, src->clone(src));
+        pkt->set_destination(pkt, src->clone(dst));
 
-        data = packet->get_payload(packet);
+        data = ip_packet->get_payload(ip_packet);
 
         /* remove UDP header */
         data = chunk_skip(data, 8);
         pkt->set_data(pkt, chunk_clone(data));
+        ip_packet->destroy(ip_packet);
 
         DBG2(DBG_NET, "socket_vpp: received packet from %#H to %#H", src, dst);
     }
@@ -312,6 +302,7 @@ METHOD(socket_t, sender, status_t,
     DBG1(DBG_NET, "socket_vpp: writing to %s", this->write_addr.sun_path);
 
     bytes_sent = sendmsg(this->sock_port, &msg, 0);
+    ip_packet->destroy(ip_packet);
     if (bytes_sent < 0)
     {
         DBG1(DBG_NET, "socket_vpp: error writing: %s", strerror(errno));
@@ -324,7 +315,7 @@ METHOD(socket_t, sender, status_t,
 METHOD(socket_t, get_port, uint16_t,
     private_socket_vpp_socket_t *this, bool nat)
 {
-    return nat ? this->split ? this->port : this->natt : this->port;
+    return nat ? this->natt : this->port;
 }
 
 METHOD(socket_t, supported_families, socket_family_t,
@@ -336,11 +327,8 @@ METHOD(socket_t, supported_families, socket_family_t,
 METHOD(socket_t, destroy, void,
     private_socket_vpp_socket_t *this)
 {
-    if (this->split)
-    {
-        close(this->sock_natt);
-        unlink(this->addr_natt.sun_path);
-    }
+    close(this->sock_natt);
+    unlink(this->addr_natt.sun_path);
     close(this->sock_port);
     unlink(this->addr_port.sun_path);
     free(this);
@@ -348,20 +336,19 @@ METHOD(socket_t, destroy, void,
 
 static status_t register_punt_sockets(vac_t *vac,
                                      uint16_t *ports,
-                                     char **read_paths,
-                                     int count)
+                                     char **read_paths)
 {
     kiknos_punt_t punts[2];
     memset(punts, 0,  2 * sizeof(punts[0]));
     int i;
 
-    for (i = 0; i < count; i++)
+    for (i = 0; i < 2; i++)
     {
         punts[i].port = ports[i];
         punts[i].socket_path = read_paths[i];
     }
 
-    kiknos_rc_t rc = vac->add_punt_sockets(vac, punts, count);
+    kiknos_rc_t rc = vac->add_punt_sockets(vac, punts, 2);
     if (KIKNOS_RC_OK != rc) {
         DBG1(DBG_LIB, "socket_vpp: register punt socket faield!");
         return FAILED;
@@ -427,7 +414,6 @@ static status_t get_vpp_socket_path(vac_t *vac, char **path)
 static status_t register_paths(private_socket_vpp_socket_t *this)
 {
     status_t status;
-    int count = 1;
     uint16_t ports[2] = {
         this->port,
         this->natt,
@@ -438,14 +424,9 @@ static status_t register_paths(private_socket_vpp_socket_t *this)
         this->sock_natt_path,
     };
 
-    if (this->split)
-    {
-        count = 2;
-    }
-
     if (!this->ports_registered)
     {
-        status = register_punt_sockets(this->vac, ports, socket_paths, count);
+        status = register_punt_sockets(this->vac, ports, socket_paths);
         if (status == SUCCESS)
         {
             this->ports_registered = TRUE;
@@ -501,7 +482,6 @@ socket_vpp_socket_t *socket_vpp_socket_create()
                     CHARON_UDP_PORT, lib->ns),
         .natt = lib->settings->get_int(lib->settings, "%s.port_nat_t",
                     CHARON_NATT_PORT, lib->ns),
-        .split = FALSE,
         .ports_registered = FALSE,
         .sock_port_path = lib->settings->get_str(lib->settings,
                             "%s.plugins.socket-vpp.sock_port_path",
@@ -518,19 +498,16 @@ socket_vpp_socket_t *socket_vpp_socket_create()
         return NULL;
     }
 
-    /* If port is specified in charon configuration (different from default 500)
-       both INIT and AUTH ikev2 packets will use this custom port.
-       This happens only if NAT is detected. */
-
     if (this->port == 0 || this->natt == 0) {
         DBG1(DBG_LIB, "socket_vpp: random port allocation not supported!");
         return NULL;
     }
 
-    if (this->port == IKEV2_UDP_PORT)
+    if (this->port != CHARON_UDP_PORT ||
+            this->natt != CHARON_NATT_PORT)
     {
-        DBG1(DBG_LIB, "socket_vpp: NAT detected or non default port configured.");
-        this->split = TRUE;
+        DBG1(DBG_LIB, "socket_vpp: custom UDP/NAT-T ports not supported!");
+        return NULL;
     }
 
     rc = create_read_socket(&this->addr_port, this->sock_port_path, this->port,
@@ -541,16 +518,13 @@ socket_vpp_socket_t *socket_vpp_socket_create()
         return NULL;
     }
 
-    if (this->split)
+    rc = create_read_socket(&this->addr_natt, this->sock_natt_path,
+                          this->natt, &this->sock_natt);
+    if (SUCCESS != rc)
     {
-        rc = create_read_socket(&this->addr_natt, this->sock_natt_path,
-                              this->natt, &this->sock_natt);
-        if (SUCCESS != rc)
-        {
-            DBG1(DBG_LIB, "socket_vpp: error binding nat-t socket!");
-            close(this->sock_port);
-            return NULL;
-        }
+        DBG1(DBG_LIB, "socket_vpp: error binding nat-t socket!");
+        close(this->sock_port);
+        return NULL;
     }
 
     DBG2(DBG_LIB, "socket_vpp: starting socket register retry procedure");
@@ -564,8 +538,7 @@ socket_vpp_socket_t *socket_vpp_socket_create()
     rc = get_vpp_socket_path(this->vac, &write_path);
     if (SUCCESS != rc)
     {
-        if (this->split)
-            close(this->sock_natt);
+        close(this->sock_natt);
         close(this->sock_port);
         return NULL;
     }
@@ -573,8 +546,7 @@ socket_vpp_socket_t *socket_vpp_socket_create()
     rc = set_addr_name(&this->write_addr, write_path);
     if (SUCCESS != rc)
     {
-        if (this->split)
-            close(this->sock_natt);
+        close(this->sock_natt);
         close(this->sock_port);
         free(write_path);
         return NULL;
