@@ -30,8 +30,9 @@
 #define SOCK_NAME_PORT "sock_port_path"
 #define SOCK_NAME_NATT "sock_natt_path"
 
-#define SOCK_PATH_PORT "/etc/vpp/" SOCK_NAME_PORT
-#define SOCK_PATH_NATT "/etc/vpp/" SOCK_NAME_NATT
+#define SOCKET_PREFIX "/etc/ipsec.d/run/"
+#define SOCK_PATH_PORT SOCKET_PREFIX SOCK_NAME_PORT
+#define SOCK_PATH_NATT SOCKET_PREFIX SOCK_NAME_NATT
 
 typedef struct private_socket_vpp_socket_t private_socket_vpp_socket_t;
 typedef struct vpp_packetdesc_t vpp_packetdesc_t;
