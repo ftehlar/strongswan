@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-charon.plugins.socket-vpp.sock_port_path = "/etc/vpp/sock_port_path"
+charon.plugins.socket-vpp.sock_port_path = "/etc/ipsec.d/run/sock_port_path"
     Socket path used for capturing IKE packets from VPP
 
-charon.plugins.socket-vpp.sock_natt_path = "/etc/vpp/sock_natt_path"
+charon.plugins.socket-vpp.sock_natt_path = "/etc/ipsec.d/run/sock_natt_path"
     Socket path used for capturing IKE packets when NAT-T is detected

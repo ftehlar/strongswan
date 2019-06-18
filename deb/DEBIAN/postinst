@@ -1,0 +1,25 @@
+#!/bin/bash
+
+ln -s /usr/local/lib/libgrpc++_unsecure.so.1.3.0 /usr/local/lib/libgrpc++_unsecure.so.3
+ln -s /usr/local/lib/libgrpc++_unsecure.so.3 /usr/local/lib/libgrpc++_unsecure.so.1
+ln -s /usr/local/lib/libgrpc++_unsecure.so.1.3.0 /usr/local/lib/libgrpc++_unsecure.so
+
+ln -s /usr/local/lib/libgrpc_unsecure.so.3.0.0 /usr/local/lib/libgrpc_unsecure.so.3
+
+ln -s /usr/local/lib/libgrpc++_cronet.so.1.3.0 /usr/local/lib/libgrpc++_cronet.so.1
+ln -s /usr/local/lib/libgrpc_cronet.so.3.0.0 /usr/local/lib/libgrpc_cronet.so.3
+ln -s /usr/local/lib/libgrpc_cronet.so.3.0.0 /usr/local/lib/libgrpc_cronet.so
+
+ln -s /usr/local/lib/libgrpc++.so.1.3.0 /usr/local/lib/libgrpc++.so.3
+ln -s /usr/local/lib/libgrpc++.so.3 /usr/local/lib/libgrpc++.so.1
+
+ln -s /usr/local/lib/libgpr.so.3.0.0 /usr/local/lib/libgpr.so.3
+
+ln -s /usr/local/lib/libgrpc++_reflection.so.1.3.0 /usr/local/lib/libgrpc++_reflection.so.3
+ln -s /usr/local/lib/libgrpc++_reflection.so.3 /usr/local/lib/libgrpc++_reflection.so.1
+
+ln -s /usr/local/lib/libgrpc++_error_details.so.1.3.0 /usr/local/lib/libgrpc++_error_details.so.3
+ln -s /usr/local/lib/libgrpc++_error_details.so.3 /usr/local/lib/libgrpc++_error_details.so.1
+
+ln -s /usr/local/lib/libgrpc.so.3.0.0 /usr/local/lib/libgrpc.so.3
+
