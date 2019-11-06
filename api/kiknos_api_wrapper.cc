@@ -26,19 +26,19 @@ extern "C" {
 
 using grpc::Status;
 using grpc::ClientContext;
-using model::SSipSec;
-using model::InterfaceName;
-using model::ReturnCode;
-using model::IPAddress;
-using model::AgentPuntSktRqst;
-using model::AgentPuntSocket;
-using model::Response;
-using model::SswanPuntSockets;
-using model::SswanPuntSocket;
-using model::IntegAlg;
-using model::CryptoAlg;
-using model::Route;
-using model::IPSecTunnel;
+using kiknos::sswan::SSipSec;
+using kiknos::sswan::InterfaceName;
+using kiknos::sswan::ReturnCode;
+using kiknos::sswan::IPAddress;
+using kiknos::sswan::AgentPuntSktRqst;
+using kiknos::sswan::AgentPuntSocket;
+using kiknos::sswan::Response;
+using kiknos::sswan::SswanPuntSockets;
+using kiknos::sswan::SswanPuntSocket;
+using kiknos::sswan::IntegAlg;
+using kiknos::sswan::CryptoAlg;
+using kiknos::sswan::Route;
+using kiknos::sswan::IPSecTunnel;
 
 std::unique_ptr<SSipSec::Stub> stub;
 

@@ -16,7 +16,7 @@
 
 syntax = "proto3";
 
-package model;
+package kiknos.sswan;
 
 /* Cryptographic algorithm for encryption */
 enum CryptoAlg {
@@ -138,6 +138,8 @@ message AgentPuntSktRqst {}
 message AgentPuntSocket {
     string socket_path = 1;
 }
+
+message SSipSecStatsRqst {}
 
 service SSipSec {
     // StrongSwan uses AddRoute to add a route for a tunnel
