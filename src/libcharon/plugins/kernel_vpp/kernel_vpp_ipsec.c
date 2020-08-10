@@ -266,49 +266,24 @@ static status_t convert_enc_alg(uint16_t alg, chunk_t key, uint16_t *vpp_alg)
 {
     if (ENCR_NULL == alg)
     {
-        *vpp_alg = VPP__IPSEC__CRYPTO_ALG__NONE_CRYPTO;
+        *vpp_alg = VPP__IPSEC__SECURITY_ASSOCIATION__CRYPTO_ALG__NONE_CRYPTO;
     }
     else if (ENCR_AES_CBC == alg)
     {
         switch (key.len * 8)
         {
             case 128:
-                *vpp_alg = VPP__IPSEC__CRYPTO_ALG__AES_CBC_128;
+                *vpp_alg = VPP__IPSEC__SECURITY_ASSOCIATION__CRYPTO_ALG__AES_CBC_128;
                 break;
             case 192:
-                *vpp_alg = VPP__IPSEC__CRYPTO_ALG__AES_CBC_192;
+                *vpp_alg = VPP__IPSEC__SECURITY_ASSOCIATION__CRYPTO_ALG__AES_CBC_192;
                 break;
             case 256:
-                *vpp_alg = VPP__IPSEC__CRYPTO_ALG__AES_CBC_256;
+                *vpp_alg = VPP__IPSEC__SECURITY_ASSOCIATION__CRYPTO_ALG__AES_CBC_256;
                 break;
             default:
                 return FAILED;
         }
-    }
-    else if (ENCR_AES_CTR == alg)
-    {
-        switch (key.len * 8)
-        {
-            case 128:
-                *vpp_alg = VPP__IPSEC__CRYPTO_ALG__AES_CTR_128;
-                break;
-            case 192:
-                *vpp_alg = VPP__IPSEC__CRYPTO_ALG__AES_CTR_192;
-                break;
-            case 256:
-                *vpp_alg = VPP__IPSEC__CRYPTO_ALG__AES_CTR_256;
-                break;
-            default:
-                return FAILED;
-        }
-    }
-    else if (ENCR_DES == alg)
-    {
-        *vpp_alg = VPP__IPSEC__CRYPTO_ALG__DES_CBC;
-    }
-    else if (ENCR_3DES == alg)
-    {
-        *vpp_alg = VPP__IPSEC__CRYPTO_ALG__DES3_CBC;
     }
     else
     {
@@ -325,25 +300,25 @@ static status_t convert_int_alg(uint16_t alg, uint16_t *vpp_alg)
     switch (alg)
     {
         case AUTH_UNDEFINED:
-            *vpp_alg = VPP__IPSEC__INTEG_ALG__NONE_INTEG;
+            *vpp_alg = VPP__IPSEC__SECURITY_ASSOCIATION__INTEG_ALG__NONE_INTEG;
             break;
         case AUTH_HMAC_MD5_96:
-            *vpp_alg = VPP__IPSEC__INTEG_ALG__MD5_96;
+            *vpp_alg = VPP__IPSEC__SECURITY_ASSOCIATION__INTEG_ALG__MD5_96;
             break;
         case AUTH_HMAC_SHA1_96:
-            *vpp_alg = VPP__IPSEC__INTEG_ALG__SHA1_96;
+            *vpp_alg = VPP__IPSEC__SECURITY_ASSOCIATION__INTEG_ALG__SHA1_96;
             break;
 	    case AUTH_HMAC_SHA2_256_96:
-            *vpp_alg = VPP__IPSEC__INTEG_ALG__SHA_256_96;
+            *vpp_alg = VPP__IPSEC__SECURITY_ASSOCIATION__INTEG_ALG__SHA_256_96;
             break;
         case AUTH_HMAC_SHA2_256_128:
-            *vpp_alg = VPP__IPSEC__INTEG_ALG__SHA_256_128;
+            *vpp_alg = VPP__IPSEC__SECURITY_ASSOCIATION__INTEG_ALG__SHA_256_128;
             break;
         case AUTH_HMAC_SHA2_384_192:
-            *vpp_alg = VPP__IPSEC__INTEG_ALG__SHA_384_192;
+            *vpp_alg = VPP__IPSEC__SECURITY_ASSOCIATION__INTEG_ALG__SHA_384_192;
             break;
         case AUTH_HMAC_SHA2_512_256:
-            *vpp_alg = VPP__IPSEC__INTEG_ALG__SHA_512_256;
+            *vpp_alg = VPP__IPSEC__SECURITY_ASSOCIATION__INTEG_ALG__SHA_512_256;
             break;
         default:
             return FAILED;

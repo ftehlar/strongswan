@@ -1,6 +1,6 @@
 
 SSWAN_VERSION=5.7.2dr2
-VERSION=$(SSWAN_VERSION)-vpp-1.0.2
+VERSION=$(SSWAN_VERSION)-vpp-1.0.3
 
 DIR=sswan_$(VERSION)
 TEST_DIR=sswan-vpp-test

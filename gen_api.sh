@@ -48,7 +48,7 @@ generate_protos()
             -I ${AGENT_ROOT} \
             --grpc-c_out=${AGENT_ROOT} \
             --grpc-c_out=${AGENT_ROOT}/models \
-            --plugin=third_party/grpc-c/build/compiler/protoc-gen-grpc-c \
+            --plugin=third_party/grpc-c/compiler/protoc-gen-grpc-c \
             "$proto";
     done
 

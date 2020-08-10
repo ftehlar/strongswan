@@ -21,7 +21,7 @@ libstrongswan_kernel_vpp_la_SOURCES = \
     kernel_vpp_ipsec.h kernel_vpp_ipsec.c
 
 libstrongswan_kernel_vpp_la_LDFLAGS = -module -avoid-version \
-	-L$(top_srcdir)/third_party/grpc-c/build/lib
+	-L$(top_srcdir)/third_party/grpc-c/lib
 
 libstrongswan_kernel_vpp_la_LIBADD = -lgrpc -lgpr -lgrpc-c -lprotobuf-c \
                                      -lprotobuf -lvpp-agent-api -lhiredis
